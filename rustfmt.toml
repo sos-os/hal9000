@@ -1,0 +1,7 @@
+max_width = 80
+reorder_imported_names = true
+reorder_imports = true
+reorder_imports_in_group = true
+match_block_trailing_comma = true
+wrap_comments = true
+use_try_shorthand = true
