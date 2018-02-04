@@ -28,3 +28,37 @@ pub trait Address
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned(&self) -> bool;
 }
+
+
+/// A physical or virtual page.
+pub trait Page {
+
+    /// Page alignment.
+    const SHIFT: usize;
+
+    /// The size of a page in bytes.
+    const SIZE: usize;
+
+    /// The type of address used to address this `Page`.
+    ///
+    /// If this is a physical page frame, then its `Address` should be the
+    /// architecture's corresponding physical address type, and if this is a
+    /// virtual page, then its `Address` should be the virtual address type.
+    type Address: Address;
+
+    /// Round `addr` up to the closest `Page`.
+    fn from_addr_up(addr: Self::Address) -> Self;
+
+    /// Round `addr` up to the closest `Page`.
+    fn from_addr_down(addr: Self::Address) -> Self;
+
+    /// Returns the base `Address` where this page starts.
+    fn base_address(&self) -> Self::Address;
+
+    /// Returns the end `Address` of this `Page`.
+    fn end_address(&self) -> Self::Address;
+
+    /// Return the page's number.
+    fn number(&self) -> usize;
+
+}
