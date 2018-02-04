@@ -1,20 +1,30 @@
+//
+// SOS: the Stupid Operating System
+//  by Eliza Weisman (eliza@elizas.website), and the SOS contributors.
+//
+//  Copyright (c) 2018 Eliza Weisman
+//  Released under the terms of the MIT license. See `LICENSE` in the root
+//  directory of this repository for more information.
+//
+//! # Architecture-independent memory abstractions.
 use util::Align;
 
 use core::ops;
 
 /// Trait representing an address, whether physical or virtual.
 pub trait Address
-    : ops::Add<Self>
-    + ops::Sub<Self>
-    + ops::Mul<Self>
-    + ops::Div<Self>
-    + ops::Shl<Self>
-    + ops::Shr<Self>
-    + ops::BitOr<Self>
-    + ops::BitAnd<Self>
-    + From<*mut u8>
-    + From<*const u8>
-    + Sized {
+    // : ops::Add<Self>
+    // + ops::Sub<Self>
+    // + ops::Mul<Self>
+    // + ops::Div<Self>
+    // + ops::Shl<Self>
+    // + ops::Shr<Self>
+    // + ops::BitOr<Self>
+    // + ops::BitAnd<Self>
+    // + From<*mut u8>
+    // + From<*const u8>
+    // + Sized
+    {
 
     /// The primitive numeric type used to represent this address.
     type Repr: Align;
@@ -26,7 +36,7 @@ pub trait Address
     fn align_up(&self, align: Self::Repr) -> Self;
 
     /// Returns true if this address is aligned on a page boundary.
-    fn is_page_aligned(&self) -> bool;
+    fn is_page_aligned<P: Page>(&self) -> bool;
 }
 
 
@@ -62,3 +72,8 @@ pub trait Page {
     fn number(&self) -> usize;
 
 }
+
+/// A virtual memory address.
+#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
+#[address_repr(usize)]
+pub struct VAddr(usize);
