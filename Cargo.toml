@@ -1,6 +1,5 @@
-[package]
-name = "hal9000"
-version = "0.0.1"
-authors = ["Eliza Weisman <eliza@elizas.website>"]
-
-[dependencies]
+[workspace]
+members = [
+    "hal9000",
+    "hal9000-derive",
+]

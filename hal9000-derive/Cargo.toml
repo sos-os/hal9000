@@ -1,0 +1,11 @@
+[package]
+name = "hal9000-derive"
+version = "0.0.1"
+authors = ["Eliza Weisman <eliza@elizas.website>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "0.11.11"
+quote = "0.3.15"

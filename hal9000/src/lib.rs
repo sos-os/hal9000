@@ -10,6 +10,9 @@
 #![feature(step_trait)]
 #![no_std]
 
+#[macro_use]
+extern crate hal9000_derive;
+
 pub mod mem;
 pub mod util;
 
