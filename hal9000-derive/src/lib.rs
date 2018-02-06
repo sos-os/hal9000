@@ -45,16 +45,18 @@ pub fn address(input: TokenStream) -> TokenStream {
 
 fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
-    let ty = ast.attrs.get(0)
-        .and_then(|attr| {
-            // if attr.path == syn::Ident::from("address_repr").into() {
-                let ty: syn::Type = syn::parse2(attr.tts.clone())
-                    .expect("address_repr type");
-                Some(ty)
-            // } else {
-            //     None
-            // }
-        })
+    let ty = ast.attrs.iter()
+        .find(|attr| attr.path == syn::Path::from(syn::Ident::from("address_repr")))
+        // .and_then(|attr| {
+        //     // if attr.path == syn::Ident::from("address_repr").into() {
+        //         let ty: syn::Ident = syn::parse2(attr.tts.clone())
+        //             .expect(&format!("address_repr type: {}" , attr.tts.clone()));
+        //         Some(ty)
+        //     // } else {
+        //     //     None
+        //     // }
+        // })
+        .map(|attr| attr.tts.clone())
         .expect("#[derive(Address)] requires #[address_repr] attribute!");
     let repr = &ty;
     quote! {
