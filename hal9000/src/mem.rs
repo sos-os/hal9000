@@ -64,4 +64,4 @@ pub trait Page {
 /// A virtual memory address.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
 #[address_repr(usize)]
-pub struct VAddr(usize);
+pub struct VAddr(pub usize);

@@ -29,27 +29,11 @@ fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
     let repr = &ty;
     quote! {
 
-        impl core::ops::Deref for #name {
-            type Target = #repr;
-            #[inline]
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl core::fmt::Debug for #name {
+        impl ::core::fmt::Debug for #name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter)
                   -> ::core::fmt::Result {
-                write!(f, "{}({:x})", stringify!($name), self.0)
+                write!(f, "{}({:#08x})", stringify!(#name), self.0)
             }
-        }
-
-        impl core::convert::Into<#repr> for #name {
-            #[inline] fn into(self) -> #repr { self.0 }
-        }
-
-        impl core::convert::From<#repr> for #name {
-            #[inline] fn from(n: #repr) -> Self { #name(n) }
         }
 
         impl Address for #name {
@@ -67,7 +51,7 @@ fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
 
             /// Returns true if this address is aligned on a page boundary.
             fn is_page_aligned<P: Page>(&self) -> bool {
-                **self % P::SIZE as #repr == 0 as #repr
+                self.0 % P::SIZE as #repr == 0 as #repr
             }
         }
     }
