@@ -5,31 +5,6 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
-macro_rules! impl_ops {
-    ($($name:ident, $fun:ident, $op:tt for $ty:ident, $size:ty)*) => {$(
-        impl ::core::ops::$name<$ty> for $ty {
-            type Output = $ty;
-
-            #[inline] fn $fun(self, rhs: $ty) -> $ty {
-                $ty(expr!(self.0 $op rhs.0))
-            }
-        }
-        impl ::core::ops::$name<$size> for $ty {
-            type Output = $ty;
-
-            #[inline] fn $fun(self, rhs: $size) -> $ty {
-                $ty(expr!(self.0 $op rhs))
-            }
-        }
-
-        forward_ref_binop! {
-            $name, $fun for $ty, $ty
-        }
-        forward_ref_binop! {
-            $name, $fun for $ty, $size
-        }
-    )*}
-}
 
 #[proc_macro_derive(Address, attributes(address_repr))]
 pub fn address(input: TokenStream) -> TokenStream {
@@ -46,27 +21,35 @@ pub fn address(input: TokenStream) -> TokenStream {
 fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
     let ty = ast.attrs.iter()
-        .find(|attr| attr.path == syn::Path::from(syn::Ident::from("address_repr")))
-        // .and_then(|attr| {
-        //     // if attr.path == syn::Ident::from("address_repr").into() {
-        //         let ty: syn::Ident = syn::parse2(attr.tts.clone())
-        //             .expect(&format!("address_repr type: {}" , attr.tts.clone()));
-        //         Some(ty)
-        //     // } else {
-        //     //     None
-        //     // }
-        // })
+        .find(|attr|
+            attr.path == syn::Path::from(syn::Ident::from("address_repr"))
+        )
         .map(|attr| attr.tts.clone())
         .expect("#[derive(Address)] requires #[address_repr] attribute!");
     let repr = &ty;
     quote! {
 
-        impl ops::Deref for #name {
+        impl core::ops::Deref for #name {
             type Target = #repr;
             #[inline]
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
+        }
+
+        impl core::fmt::Debug for #name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter)
+                  -> ::core::fmt::Result {
+                write!(f, "{}({:x})", stringify!($name), self.0)
+            }
+        }
+
+        impl core::convert::Into<#repr> for #name {
+            #[inline] fn into(self) -> #repr { self.0 }
+        }
+
+        impl core::convert::From<#repr> for #name {
+            #[inline] fn from(n: #repr) -> Self { #name(n) }
         }
 
         impl Address for #name {
