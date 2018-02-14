@@ -9,7 +9,7 @@
 //! # Architecture-independent memory abstractions.
 use util::Align;
 
-use core::ops;
+use core::{cmp, ops};
 
 /// Trait representing an address, whether physical or virtual.
 pub trait Address {
@@ -65,3 +65,62 @@ pub trait Page {
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
 #[address_repr(usize)]
 pub struct VAddr(pub usize);
+
+
+/// A memory region.
+///
+/// This represents a region of memory with a base address and a length,
+/// such as those given to us by multiboot2 or other bootloaders. It is
+/// not necessarily page-aligned; a given `Region` will likely encompass
+/// several frames.
+#[derive(Copy, Clone, Debug)]
+pub struct Region<A> {
+
+    /// The base address of the memory region.
+    pub base_address: A,
+
+    /// The size in bytes of the memory region.
+    pub size: usize,
+
+    /// Whether this memory region is usable.
+    pub is_usable: bool,
+
+}
+
+// ===== impl Region =====
+
+impl<A: Address + Copy> Region<A> {
+
+    /// Returns the end address of the region.
+    pub fn end_address(&self) -> A
+    where
+        A: ops::Add<usize, Output=A>
+    {
+        self.base_address + self.size
+    }
+
+}
+
+impl<A> cmp::PartialEq for Region<A>
+where
+    A: cmp::PartialEq
+{
+
+    fn eq(&self, other: &Self) -> bool {
+        self.base_address == other.base_address &&
+        self.size == other.size &&
+        self.is_usable == other.is_usable
+    }
+
+}
+
+impl<A> cmp::PartialOrd for Region<A>
+where
+    A: cmp::PartialOrd
+{
+
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.base_address.partial_cmp(&other.base_address)
+    }
+
+}
