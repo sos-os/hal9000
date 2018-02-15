@@ -8,6 +8,7 @@
 //
 //! # HAL-9000: the base SOS Hardware Abstraction Layer
 #![feature(step_trait)]
+#![feature(associated_type_defaults)]
 #![no_std]
 
 #[macro_use]
@@ -15,6 +16,7 @@ extern crate hal9000_derive;
 
 pub mod mem;
 pub mod util;
+pub mod params;
 
 #[cfg(test)]
 mod tests {
