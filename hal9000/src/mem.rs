@@ -29,7 +29,10 @@ pub trait Address {
 }
 
 /// A physical address.
-pub trait PhysicalAddress: Repr + Into<*mut u8>;
+pub trait PhysicalAddress: Address {
+    /// Convert this physical address into a raw pointer to a T.
+    fn as_mut_ptr<T>(&self) -> *mut T;
+}
 
 /// A physical or virtual page.
 pub trait Page {
