@@ -28,11 +28,6 @@ fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
         .expect("#[derive(Address)] requires #[address_repr] attribute!");
     let repr = &ty;
     quote! {
-        impl ::core::convert::Into<#repr> for #name {
-            #[inline] fn into(self) -> #repr {
-                self.0
-            }
-        }
 
         impl ::core::fmt::Debug for #name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter)
@@ -43,20 +38,33 @@ fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
 
         impl Address for #name {
             type Repr = #repr;
+
             /// Align this address down to the provided alignment.
-            fn align_down(&self, align: Self::Repr) -> Self {
+            fn align_down(&self, align: #repr) -> Self {
                 use util::Align;
                 #name ( self.0.align_down(align) )
             }
 
             /// Align this address up to the provided alignment.
-            fn align_up(&self, align: Self::Repr) -> Self {
+            fn align_up(&self, align: #repr) -> Self {
                 #name ( self.0.align_up(align) )
             }
 
             /// Returns true if this address is aligned on a page boundary.
             fn is_page_aligned<P: Page>(&self) -> bool {
                 self.0 % P::SIZE as #repr == 0 as #repr
+            }
+        }
+
+        impl ::core::convert::Into<#repr> for #name {
+            fn into(self) -> #repr {
+                self.0
+            }
+        }
+
+        impl ::core::convert::From<#repr> for #name {
+            fn from(r: #repr) -> #name {
+                #name(r)
             }
         }
     }

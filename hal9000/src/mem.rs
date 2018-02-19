@@ -25,8 +25,11 @@ pub trait Address {
 
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned<P: Page>(&self) -> bool;
+
 }
 
+/// A physical address.
+pub trait PhysicalAddress: Repr + Into<*mut u8>;
 
 /// A physical or virtual page.
 pub trait Page {
@@ -66,7 +69,6 @@ pub trait Page {
 #[address_repr(usize)]
 pub struct VAddr(pub usize);
 
-
 /// A memory region.
 ///
 /// This represents a region of memory with a base address and a length,
@@ -75,7 +77,6 @@ pub struct VAddr(pub usize);
 /// several frames.
 #[derive(Copy, Clone, Debug)]
 pub struct Region<A> {
-
     /// The base address of the memory region.
     pub base_address: A,
 
@@ -84,43 +85,35 @@ pub struct Region<A> {
 
     /// Whether this memory region is usable.
     pub is_usable: bool,
-
 }
 
 // ===== impl Region =====
 
 impl<A: Address + Copy> Region<A> {
-
     /// Returns the end address of the region.
     pub fn end_address(&self) -> A
     where
-        A: ops::Add<usize, Output=A>
+        A: ops::Add<usize, Output = A>,
     {
         self.base_address + self.size
     }
-
 }
 
 impl<A> cmp::PartialEq for Region<A>
 where
-    A: cmp::PartialEq
+    A: cmp::PartialEq,
 {
-
     fn eq(&self, other: &Self) -> bool {
-        self.base_address == other.base_address &&
-        self.size == other.size &&
-        self.is_usable == other.is_usable
+        self.base_address == other.base_address && self.size == other.size
+            && self.is_usable == other.is_usable
     }
-
 }
 
 impl<A> cmp::PartialOrd for Region<A>
 where
-    A: cmp::PartialOrd
+    A: cmp::PartialOrd,
 {
-
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.base_address.partial_cmp(&other.base_address)
     }
-
 }
