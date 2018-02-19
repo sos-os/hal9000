@@ -28,6 +28,11 @@ fn impl_address(ast: &syn::DeriveInput) -> quote::Tokens {
         .expect("#[derive(Address)] requires #[address_repr] attribute!");
     let repr = &ty;
     quote! {
+        impl ::core::convert::Into<#repr> for #name {
+            #[inline] fn into(self) -> #repr {
+                self.0
+            }
+        }
 
         impl ::core::fmt::Debug for #name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter)
