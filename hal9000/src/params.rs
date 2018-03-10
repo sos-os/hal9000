@@ -1,5 +1,5 @@
-use ::mem::{self, Address, Page};
 use core::ops::Range;
+use mem::{self, Address, Page};
 
 pub trait Architecture {
     /// This architecture's physical address type.
@@ -12,7 +12,6 @@ pub trait Architecture {
 }
 
 pub trait BootParams {
-
     /// This architecture's physical address type.
     type Arch: Architecture;
 
@@ -29,5 +28,4 @@ pub trait BootParams {
     ///
     /// The kernel _should_ start on the first address in the frame range,
     fn kernel_frames(&self) -> Range<<Self::Arch as Architecture>::Frame>;
-
 }

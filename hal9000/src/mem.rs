@@ -13,7 +13,6 @@ use core::{cmp, ops};
 
 /// Trait representing an address, whether physical or virtual.
 pub trait Address {
-
     /// The primitive numeric type used to represent this address.
     type Repr: Align;
 
@@ -25,7 +24,6 @@ pub trait Address {
 
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned<P: Page>(&self) -> bool;
-
 }
 
 /// A physical address.
@@ -36,7 +34,6 @@ pub trait PhysicalAddress: Address {
 
 /// A physical or virtual page.
 pub trait Page {
-
     /// Page alignment.
     const SHIFT: usize;
 
@@ -64,7 +61,6 @@ pub trait Page {
 
     /// Return the page's number.
     fn number(&self) -> usize;
-
 }
 
 /// A virtual memory address.
@@ -105,13 +101,11 @@ pub enum RegionKind {
     Unusable,
     /// Additional region types may be added.
     __Nonexhaustive,
-
 }
 
 // ===== impl Region =====
 
 impl<A: Address + Copy> Region<A> {
-
     /// Returns the end address of the region.
     pub fn end_address(&self) -> A
     where
@@ -119,11 +113,9 @@ impl<A: Address + Copy> Region<A> {
     {
         self.base_address + self.size
     }
-
 }
 
 impl<A> Region<A> {
-
     /// Returns true if this region is usable.
     pub fn is_usable(&self) -> bool {
         match self.kind {
@@ -135,7 +127,7 @@ impl<A> Region<A> {
     /// Returns the number of frames contained in a given region.
     pub fn num_frames<P>(&self) -> usize
     where
-        P: Page
+        P: Page,
     {
         self.size / P::SIZE
     }
