@@ -78,7 +78,7 @@ pub struct VAddr(pub usize);
 /// such as those given to us by multiboot2 or other bootloaders. It is
 /// not necessarily page-aligned; a given `Region` will likely encompass
 /// several frames.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq)]
 pub struct Region<A> {
     /// The base address of the memory region.
     pub base_address: A,
@@ -87,18 +87,57 @@ pub struct Region<A> {
     pub size: usize,
 
     /// Whether this memory region is usable.
-    pub is_usable: bool,
+    pub kind: RegionKind,
+}
+
+/// Marker for the type of a memory region.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
+pub enum RegionKind {
+    /// Usable RAM
+    Usable,
+    /// RAM in use by the kernel.
+    InUse,
+    /// RAM reserved (i.e. by ACPI).
+    ///
+    /// TODO(eliza): should we add specific variants for various types of
+    ///              reserved regions?
+    Unusable,
+    /// Additional region types may be added.
+    __Nonexhaustive,
+
 }
 
 // ===== impl Region =====
 
 impl<A: Address + Copy> Region<A> {
+
     /// Returns the end address of the region.
     pub fn end_address(&self) -> A
     where
         A: ops::Add<usize, Output = A>,
     {
         self.base_address + self.size
+    }
+
+}
+
+impl<A> Region<A> {
+
+    /// Returns true if this region is usable.
+    pub fn is_usable(&self) -> bool {
+        match self.kind {
+            RegionKind::Usable => true,
+            _ => false,
+        }
+    }
+
+    /// Returns the number of frames contained in a given region.
+    pub fn num_frames<P>(&self) -> usize
+    where
+        P: Page
+    {
+        self.size / P::SIZE
     }
 }
 
@@ -108,7 +147,7 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.base_address == other.base_address && self.size == other.size
-            && self.is_usable == other.is_usable
+            && self.kind == other.kind
     }
 }
 
