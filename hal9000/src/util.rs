@@ -1,14 +1,15 @@
 use core::{iter, ops};
 
 /// Trait adding `align_up` and `align_down` methods to numbers.
-pub trait Align
-    : Sized
+pub trait Align:
+    Sized
     + Copy
     + ops::Add<Output = Self>
     + ops::Sub<Output = Self>
     + ops::BitAnd<Output = Self>
     + ops::Not<Output = Self>
-    + iter::Step {
+    + iter::Step
+{
     #[inline]
     fn align_up(&self, to: Self) -> Self {
         let align = to.sub_one();

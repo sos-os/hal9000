@@ -6,7 +6,10 @@ pub use ::mem::{
     Address as __hal9000_mem_Address,
     Page as __hal9000_mem_Page,
     PhysicalAddress as __hal9000_mem_PhysicalAddress,
-    Region as __hal9000_mem_Region,
+    map::{
+        Region as __hal9000_mem_map_Region,
+    }
+
 };
 pub use ::params::{
     Architecture as __hal9000_params_Architecture,
