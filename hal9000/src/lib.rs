@@ -15,8 +15,19 @@
 extern crate hal9000_derive;
 
 pub mod mem;
-pub mod util;
 pub mod params;
+pub mod util;
+
+pub trait Architecture {
+    /// This architecture's physical address type.
+    type PAddr: mem::Address;
+
+    /// This architecture's physical page type.
+    type Frame: mem::Page;
+
+    /// The name of the architecture (for logging, etc).
+    const NAME: &'static str;
+}
 
 #[cfg(test)]
 mod tests {

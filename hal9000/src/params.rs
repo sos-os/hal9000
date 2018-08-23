@@ -1,22 +1,16 @@
+use super::Architecture;
 use core::ops::Range;
 use mem::{self, Address, Page};
-
-pub trait Architecture {
-    /// This architecture's physical address type.
-    type PAddr: Address;
-
-    /// This architecture's physical page type.
-    type Frame: Page;
-
-    type MemRegion = mem::Region<Self::PAddr>;
-}
 
 pub trait BootParams {
     /// This architecture's physical address type.
     type Arch: Architecture;
+
+    type MemRegion: mem::map::Region<Addr = <Self::Arch as Architecture>::PAddr>;
+
     /// Abstracts over platform-specific details to represent
     /// the platform's memory map.
-    type MemMap: Iterator<Item = <Self::Arch as Architecture>::MemRegion>;
+    type MemMap: Iterator<Item = Self::MemRegion>;
 
     /// Returns the base address of the kernel memory region.
     fn kernel_base(&self) -> <Self::Arch as Architecture>::PAddr;
@@ -31,4 +25,8 @@ pub trait BootParams {
     ///
     /// The kernel _should_ start on the first address in the frame range,
     fn kernel_frames(&self) -> Range<<Self::Arch as Architecture>::Frame>;
+}
+
+pub trait BootloaderInfo {
+    fn name(&self) -> &'static str;
 }
