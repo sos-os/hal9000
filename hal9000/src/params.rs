@@ -1,6 +1,5 @@
-use super::Architecture;
+use ::{mem, Architecture};
 use core::ops::Range;
-use mem::{self, Address, Page};
 
 pub trait BootParams {
     /// This architecture's physical address type.
