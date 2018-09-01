@@ -7,12 +7,12 @@
 //  directory of this repository for more information.
 //
 //! # Architecture-independent memory abstractions.
-use super::{params::BootParams, Architecture};
-use util::Align;
+pub use self::page::Page;
+use {params::BootParams, util::Align, Architecture};
 
-use core::{cmp, ops};
 
 pub mod map;
+pub mod page;
 
 /// Trait representing an address, whether physical or virtual.
 pub trait Address {
@@ -35,52 +35,48 @@ pub trait PhysicalAddress: Address {
     fn as_mut_ptr<T>(&self) -> *mut T;
 }
 
-/// A physical or virtual page.
-pub trait Page {
-    /// Page alignment.
-    const SHIFT: usize;
-
-    /// The size of a page in bytes.
-    const SIZE: usize;
-
-    /// The type of address used to address this `Page`.
-    ///
-    /// If this is a physical page frame, then its `Address` should be the
-    /// architecture's corresponding physical address type, and if this is a
-    /// virtual page, then its `Address` should be the virtual address type.
-    type Address: Address;
-
-    /// Round `addr` up to the closest `Page`.
-    fn from_addr_up(addr: Self::Address) -> Self;
-
-    /// Round `addr` up to the closest `Page`.
-    fn from_addr_down(addr: Self::Address) -> Self;
-
-    /// Returns the base `Address` where this page starts.
-    fn base_address(&self) -> Self::Address;
-
-    /// Returns the end `Address` of this `Page`.
-    fn end_address(&self) -> Self::Address;
-
-    /// Return the page's number.
-    fn number(&self) -> usize;
-}
-
 pub trait MemCtrl {
     type Arch: Architecture;
+    type Frame = <Self::Arch as Architecture>::Frame;
+    type Error;
 
-    // TODO: needs a frame allocator parameter.
-    unsafe fn init_paging<P: BootParams<Arch = Self::Arch>>();
+    /// Initialize the MMU's paging.
+    ///
+    /// This function should not be called more than once. The kernel should
+    /// not normally do so, but implementors of this trait may choose to add
+    /// additional checks against repeated calls.
+    unsafe fn init_paging<P, A>(
+        params: &P,
+        frame_allocator: &mut A,
+    ) -> Result<(), Self::Error>
+    where
+        P: BootParams<Arch = Self::Arch>,
+        A: page::FrameAllocator<Frame = Self::Frame>,
+        Self::Frame: Page;
 
-    // TODO: init heap
+    /// Initializes the OS heap.
+    ///
+    /// This function should not be called more than once. The kernel should
+    /// not normally do so, but implementors of this trait may choose to add
+    /// additional checks against repeated calls.
+    ///
+    /// # Safety
+    ///
+    /// - Until this function has returned `Ok`, using heap-allocated types
+    ///   will result in undefined behaviour.
+    /// - Calling this function with incorrect parameters may result in
+    ///   undefined behaviour.
+    unsafe fn init_heap<P, A>(
+        params: &P,
+        frame_allocator: &mut A,
+    ) -> Result<(), Self::Error>
+    where
+        P: BootParams<Arch = Self::Arch>,
+        A: page::FrameAllocator<Frame = Self::Frame>,
+        Self::Frame: Page;
 }
 
 /// A virtual memory address.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
 #[address_repr(usize)]
 pub struct VAddr(pub usize);
-
-#[derive(Copy, Clone, Debug)]
-pub struct PageRange<P> {
-    // TODO: WIP
-}
