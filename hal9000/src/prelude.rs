@@ -4,7 +4,10 @@
 //! will not collide with other types.
 pub use ::mem::{
     Address as __hal9000_mem_Address,
-    Page as __hal9000_mem_Page,
+    page::{
+        Page as __hal9000_mem_page_Page,
+        FrameAllocator as __hal9000_mem_page_FrameAllocator
+    },
     PhysicalAddress as __hal9000_mem_PhysicalAddress,
     map::{
         Region as __hal9000_mem_map_Region,

@@ -9,7 +9,7 @@
 //! Architecture-independent representation of platform-specific memory maps.
 use super::{Address, Page};
 
-use core::{cmp, ops};
+use core::ops;
 
 /// A memory region.
 ///
@@ -44,7 +44,9 @@ pub trait Region {
     fn is_used(&self) -> bool;
 
     fn is_kernel(&self) -> bool;
+
 }
+
 
 pub mod imp {
     use super::*;
@@ -53,6 +55,7 @@ pub mod imp {
 
     #[derive(Copy, Clone, Debug, Eq)]
     pub struct GenericRegion<A> {
+
         pub base_address: A,
 
         /// The size in bytes of the memory region.
@@ -75,6 +78,7 @@ pub mod imp {
         /// TODO(eliza): should we add specific variants for various types of
         ///              reserved regions?
         Unusable,
+        Kernel,
         /// Additional region types may be added.
         __Nonexhaustive,
     }
@@ -83,6 +87,7 @@ pub mod imp {
 
     impl<A: Address + Copy> Region for GenericRegion<A> {
         type Addr = A;
+
 
         /// Returns the base address of the memory region.
         fn base_address(&self) -> Self::Addr {
@@ -101,6 +106,22 @@ pub mod imp {
                 _ => false,
             }
         }
+
+        /// Returns true if this region is in use.
+        fn is_used(&self) -> bool {
+            match self.kind {
+                RegionKind::InUse => true,
+                _ => false,
+            }
+        }
+
+        /// Returns true if this region is used by the kernel..
+        fn is_kernel(&self) -> bool {
+            match self.kind {
+                RegionKind::Kernel => true,
+                _ => false,
+            }
+        }
     }
 
     impl<A> cmp::PartialEq for GenericRegion<A>
@@ -108,8 +129,7 @@ pub mod imp {
         A: cmp::PartialEq,
     {
         fn eq(&self, other: &Self) -> bool {
-            self.base_address == other.base_address
-                && self.size == other.size
+            self.base_address == other.base_address && self.size == other.size
                 && self.kind == other.kind
         }
     }
