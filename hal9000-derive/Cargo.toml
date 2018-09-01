@@ -7,8 +7,9 @@ authors = ["Eliza Weisman <eliza@elizas.website>"]
 proc-macro = true
 
 [dependencies.syn]
-version = "0.12.12"
+version = "0.14"
 features = ["full", "extra-traits"]
 
 [dependencies]
-quote = "0.4.2"
+quote = "0.6.8"
+proc-macro2 = "0.4"
