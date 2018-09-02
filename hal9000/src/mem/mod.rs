@@ -118,3 +118,10 @@ impl From<usize> for VAddr {
         VAddr(r)
     }
 }
+
+impl VAddr {
+    #[inline(always)]
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
