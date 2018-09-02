@@ -1,4 +1,7 @@
-use super::Address;
+use {
+    mem::{Address, VAddr},
+    Architecture,
+};
 
 /// A physical or virtual page.
 pub trait Page {
@@ -59,9 +62,127 @@ pub unsafe trait FrameAllocator {
     //       way of representing frame ranges.
 }
 
+/// On some architectures, such as x86, page table changes must be flushed
+/// from one or more caches or buffers before they are valid. This type
+/// represents that operation.Address
+///
+/// On architectures where a commit operation is not necessary, this trait
+/// is implemented by `()`; commiting a `()`-typed update will do nothing.
+pub trait TableUpdate {
+    /// Optionally, information about the committed change may be returned to
+    /// the kernel.
+    type Item;
+
+    /// Commit the page table update, returning an `Item`.
+    unsafe fn commit(self) -> Self::Item;
+}
+
+pub trait Mapper {
+    type Arch: Architecture;
+    type PAddr = <Self::Arch as Architecture>::PAddr;
+
+    type Physical: Page = <Self::Arch as Architecture>::Frame;
+    type Virtual: Page<Address = VAddr>;
+
+    /// Architecture-dependent flags that configure a virtual page.
+    type Flags;
+    /// The type returned by a page table update.
+    ///
+    /// This must be committed for the update to have an effect.
+    type Update: TableUpdate;
+    /// Any errors that can occur when mapping a page.
+    type Error;
+
+    /// Translates a virtual address to the corresponding physical address.
+    ///
+    /// # Returns
+    /// + `Some(PAddr)` containing the physical address corresponding to
+    ///                 `vaddr`, if it is mapped.
+    /// + `None`: if the address is not mapped.
+    fn translate(&self, vaddr: VAddr) -> Option<Self::PAddr>;
+
+    /// Translates a virtual page to a physical frame.
+    fn translate_page(&self, page: Self::Virtual) -> Option<Self::Physical>;
+
+    /// Modifies the page tables so that `page` maps to `frame`.
+    ///
+    /// # Arguments
+    /// + `page`: the virtual `Page` to map
+    /// + `frame`: the physical `Frame` that `Page` should map to.
+    /// + `flags`: the page table entry flags.
+    /// + `alloc`: a memory allocator
+    fn map<A>(
+        &mut self,
+        page: Self::Virtual,
+        frame: Self::Physical,
+        flags: Self::Flags,
+        alloc: &mut A,
+    ) -> Result<Self::Update, Self::Error>
+    where
+        A: FrameAllocator<Frame = Self::Physical>;
+
+    /// Identity maps a given `frame`.
+    ///
+    /// # Arguments
+    /// + `frame`: the physical `Frame` to identity map
+    /// + `flags`: the page table entry flags.
+    /// + `alloc`: a memory allocator
+    fn identity_map<A>(
+        &mut self,
+        frame: Self::Physical,
+        flags: Self::Flags,
+        alloc: &mut A,
+    ) -> Result<Self::Update, Self::Error>
+    where
+        A: FrameAllocator<Frame = Self::Physical>;
+
+    /// Maps the given `VirtualPage` to any free frame.
+    ///
+    /// This is like the fire and forget version of `map_to`: we just pick the
+    /// first available free frame and map the page to it.
+    ///
+    /// # Arguments
+    /// + `page`: the`VirtualPage` to map
+    /// + `flags`: the page table entry flags.
+    /// + `alloc`: a memory allocator
+    fn map_to_any<A>(
+        &mut self,
+        page: Self::Virtual,
+        flags: Self::Flags,
+        alloc: &mut A,
+    ) -> Result<Self::Update, Self::Error>
+    where
+        A: FrameAllocator<Frame = Self::Physical>;
+
+    /// Unmaps the given `VirtualPage`.
+    ///
+    /// All freed frames are returned to the given `FrameAllocator`.
+    fn unmap<A>(
+        &mut self,
+        page: Self::Virtual,
+        alloc: &mut A,
+    ) -> Result<Self::Update, Self::Error>
+    where
+        A: FrameAllocator<Frame = Self::Physical>;
+
+    /// Updates the flags on the given `page`.
+    fn set_flags(
+        &mut self,
+        page: Self::Virtual,
+        flags: Self::Flags,
+    ) -> Result<Self::Update, Self::Error>;
+}
+
 /// Represents a contiguous range of pages.
 #[derive(Copy, Clone, Debug)]
 pub struct Range<P> {
     start: P,
     end: P,
+}
+
+impl TableUpdate for () {
+    type Item = ();
+    unsafe fn commit(self) -> Self::Item {
+        // do nothing.
+    }
 }
