@@ -12,6 +12,7 @@ pub struct X86_64;
 /// An `x86_64` physical memory address.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
 #[address_repr(u64)]
+#[repr(transparent)]
 pub struct PAddr(pub u64);
 
 impl Architecture for X86_64 {
