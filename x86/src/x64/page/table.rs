@@ -38,7 +38,7 @@ impl page::Mapper for ActivePml4 {
     /// The type returned by a page table update.
     ///
     /// This must be committed for the update to have an effect.
-    type Update = FlushTlb<Self::Virtual>;
+    type Update = FlushTlb<size::Small>;
     /// Any errors that can occur when mapping a page.
     type Error = Error;
 
