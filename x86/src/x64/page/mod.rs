@@ -1,7 +1,9 @@
 use core::{marker::PhantomData, ops};
 use hal9000::mem::{self, Address};
 
-use super::{PAddr, VAddr};
+use ::x64::{PAddr, VAddr};
+
+pub mod table;
 
 pub trait PageSize: Copy + Eq + PartialOrd + Ord {
     const SIZE: usize;
