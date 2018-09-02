@@ -44,9 +44,7 @@ pub trait Region {
     fn is_used(&self) -> bool;
 
     fn is_kernel(&self) -> bool;
-
 }
-
 
 pub mod imp {
     use super::*;
@@ -55,7 +53,6 @@ pub mod imp {
 
     #[derive(Copy, Clone, Debug, Eq)]
     pub struct GenericRegion<A> {
-
         pub base_address: A,
 
         /// The size in bytes of the memory region.
@@ -87,7 +84,6 @@ pub mod imp {
 
     impl<A: Address + Copy> Region for GenericRegion<A> {
         type Addr = A;
-
 
         /// Returns the base address of the memory region.
         fn base_address(&self) -> Self::Addr {
@@ -129,7 +125,8 @@ pub mod imp {
         A: cmp::PartialEq,
     {
         fn eq(&self, other: &Self) -> bool {
-            self.base_address == other.base_address && self.size == other.size
+            self.base_address == other.base_address
+                && self.size == other.size
                 && self.kind == other.kind
         }
     }

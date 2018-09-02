@@ -28,6 +28,8 @@ pub trait Architecture {
 
     /// The name of the architecture (for logging, etc).
     const NAME: &'static str;
+
+    const BITS: &'static str;
 }
 
 #[cfg(test)]
