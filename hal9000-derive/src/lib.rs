@@ -1,3 +1,4 @@
+#![recursion_limit = "128"]
 extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
@@ -7,52 +8,82 @@ extern crate syn;
 use proc_macro2::{Ident, Span};
 use quote::TokenStreamExt;
 
-
 #[proc_macro_derive(Address, attributes(address_repr))]
 pub fn address(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
 
     // Build the impl
-    let gen = impl_address(&ast);
+    let mut gen = proc_macro2::TokenStream::new();
+    gen.append_all(&[impl_address(&ast), impl_number(&ast)]);
+
+    // Return the generated impl
+    gen.into()
+}
+
+#[proc_macro_derive(Number)]
+pub fn number(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+
+    // Build the impl
+    let gen = impl_number(&ast);
 
     // Return the generated impl
     gen.into()
 }
 
 fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
-    let name = &ast.ident;
-    let ty = ast
-        .attrs
-        .iter()
-        .find(|attr| {
-            attr.path == syn::Path::from(Ident::new("address_repr", Span::call_site()))
-        }).map(|attr| attr.tts.clone())
-        .expect("#[derive(Address)] requires #[address_repr] attribute!");
-
-    let mut token_stream: proc_macro2::TokenStream = {
-        let repr = &ty;
-        let tokens = quote! {
-            impl ::core::fmt::Debug for #name {
-                fn fmt(&self, f: &mut ::core::fmt::Formatter)
-                    -> ::core::fmt::Result {
-                    write!(f, "{}({:#08x})", stringify!(#name), self.0)
-                }
+    fn get_repr(ast: &syn::DeriveInput) -> Option<syn::NestedMeta> {
+        let attr = ast.attrs.iter().find(|attr| {
+            attr.path
+                == syn::Path::from(Ident::new(
+                    "address_repr",
+                    Span::call_site(),
+                ))
+        });
+        let meta = attr?.clone().interpret_meta();
+        if let syn::Meta::List(list) = meta? {
+            let nested = list.nested.clone();
+            if nested.len() == 1 {
+                return nested
+                    .first()
+                    .map(syn::punctuated::Pair::into_value)
+                    .cloned();
             }
+        };
+        None
+    }
 
+    let name = &ast.ident;
+    let ty = get_repr(ast)
+        .expect("#[derive(Address)] requires #[address_repr] attribute!");
+    let repr = &ty;
+    let mut tokens: proc_macro2::TokenStream = quote! {
+        impl ::core::fmt::Debug for #name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter)
+                -> ::core::fmt::Result {
+                write!(f, "{}({:#08x})", stringify!(#name), self.0)
+            }
+        }
+    }.into();
+    // this is broken up into several `quote!`s so we don't hit
+    // the recursion limit...
+    tokens.append_all(&[
+        quote! {
             impl Address for #name {
                 type Repr = #repr;
 
                 /// Align this address down to the provided alignment.
-                fn align_down(&self, align: #repr) -> Self {
+                fn align_down(&self, align: usize) -> Self {
                     use ::hal9000::util::Align;
-                    #name ( self.0.align_down(align) )
+                    #name ( self.0.align_down(align as #repr) )
                 }
 
                 /// Align this address up to the provided alignment.
-                fn align_up(&self, align: #repr) -> Self {
+                fn align_up(&self, align: usize) -> Self {
                     use ::hal9000::util::Align;
-                    #name ( self.0.align_up(align) )
+                    #name ( self.0.align_up(align as #repr) )
                 }
 
                 /// Returns true if this address is aligned on a page boundary.
@@ -60,54 +91,117 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.0 % P::SIZE as #repr == 0 as #repr
                 }
             }
-
+        },
+        quote! {
             impl ::core::convert::Into<#repr> for #name {
                 fn into(self) -> #repr {
                     self.0
                 }
             }
-
+        },
+        quote! {
             impl ::core::convert::From<#repr> for #name {
                 fn from(r: #repr) -> #name {
                     #name(r)
                 }
             }
-        };
-        tokens.into()
-    };
-    let self_binops = [
+
+            impl ::core::convert::From<usize> for #name {
+                fn from(r: usize) -> #name {
+                    #name(r as #repr)
+                }
+            }
+        },
+        quote! {
+            impl ::core::iter::Step for #name {
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    <#repr>::steps_between(&start.0, &end.0)
+                }
+
+                /// Replaces this step with `1`, returning itself
+                fn replace_one(&mut self) -> Self {
+                    self.0 = 1;
+                    *self
+                }
+
+                /// Replaces this step with `0`, returning itself
+                fn replace_zero(&mut self) -> Self {
+                    self.0 = 0;
+                    *self
+                }
+
+                /// Adds one to this step, returning the result
+                fn add_one(&self) -> Self {
+                    Self::from( self.0 + 1 )
+                }
+
+                /// Subtracts one to this step, returning the result
+                fn sub_one(&self) -> Self {
+                    Self::from( self.0 - 1 )
+                }
+
+                /// Add an usize, returning None on overflow
+                fn add_usize(&self, n: usize) -> Option<Self> {
+                    use ::core::#repr;
+                    if n > (#repr::MAX as usize) {
+                        None
+                    } else {
+                        Some(Self::from( self.0 + (n as #repr)))
+                    }
+                }
+            }
+        },
+        // quote!(impl hal9000::util::Align for #name {})
+    ]);
+    tokens
+}
+
+fn impl_number(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
+    let name = &ast.ident;
+    let mut tokens = proc_macro2::TokenStream::new();
+    for (op_ty, func) in &[
         (quote!(Add), quote!(add)),
         (quote!(Sub), quote!(sub)),
         (quote!(Div), quote!(div)),
         (quote!(Mul), quote!(mul)),
         (quote!(Rem), quote!(rem)),
-    ];
-    for (op_ty, func) in &self_binops {
+        (quote!(BitAnd), quote!(bitand)),
+    ] {
         let binop = impl_self_binop(quote!(::core::ops), name, op_ty, func);
-        token_stream.extend(binop);
+        tokens.extend(binop);
     }
-    token_stream
+    tokens.extend(impl_unary_op(
+        quote!(::core::ops),
+        name,
+        quote!(Not),
+        quote!(not),
+    ));
+    tokens
 }
 
-
-fn impl_self_binop<A, B, C, D>(path: A, ty: B, op_ty: C, func: D) -> proc_macro2::TokenStream
+fn impl_self_binop<A, B, C, D>(
+    path: A,
+    ty: B,
+    op_ty: C,
+    func: D,
+) -> proc_macro2::TokenStream
 where
     A: quote::ToTokens,
     B: quote::ToTokens,
     C: quote::ToTokens,
     D: quote::ToTokens,
 {
-    let mut tokens: proc_macro2::TokenStream = quote! {
-        impl #path::#op_ty<#ty> for #ty {
-            type Output = #ty;
-            fn #func(self, rhs: #ty) -> Self::Output {
-                #ty ( #path::#op_ty::#func(self.0, rhs.0) )
-            }
-        }
-    }.into();
+    let mut tokens = proc_macro2::TokenStream::new();
+    // again, this helps us get around the recursion limit...
     tokens.append_all(&[
-        // this is broken up into several `quote!`s so we don't hit
-        // the recursion limit...
+        quote! {
+            impl #path::#op_ty<#ty> for #ty {
+                type Output = #ty;
+                fn #func(self, rhs: #ty) -> Self::Output {
+                    #ty ( #path::#op_ty::#func(self.0, rhs.0) )
+                }
+            }
+        },
         quote! {
             impl<'a> #path::#op_ty<#ty> for &'a #ty {
                 type Output = #ty;
@@ -129,6 +223,41 @@ where
                 type Output = #ty;
                 fn #func(self, rhs: &'a #ty) -> Self::Output {
                     #ty ( #path::#op_ty::#func(self.0, rhs.0) )
+                }
+            }
+        },
+    ]);
+    tokens.into()
+}
+
+fn impl_unary_op<A, B, C, D>(
+    path: A,
+    ty: B,
+    op_ty: C,
+    func: D,
+) -> proc_macro2::TokenStream
+where
+    A: quote::ToTokens,
+    B: quote::ToTokens,
+    C: quote::ToTokens,
+    D: quote::ToTokens,
+{
+    let mut tokens = proc_macro2::TokenStream::new();
+    // again, this helps us get around the recursion limit...
+    tokens.append_all(&[
+        quote! {
+            impl #path::#op_ty for #ty {
+                type Output = #ty;
+                fn #func(self) -> Self::Output {
+                    #ty ( #path::#op_ty::#func(self.0) )
+                }
+            }
+        },
+        quote! {
+            impl<'a> #path::#op_ty for &'a #ty {
+                type Output = #ty;
+                fn #func(self) -> Self::Output {
+                    #ty ( #path::#op_ty::#func(self.0) )
                 }
             }
         },
