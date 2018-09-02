@@ -8,22 +8,23 @@
 //
 //! # Architecture-independent memory abstractions.
 pub use self::page::Page;
-use {params::BootParams, util::Align, Architecture};
 
+use core::{fmt, ops};
+use {params::BootParams, util::Align, Architecture};
 
 pub mod map;
 pub mod page;
 
 /// Trait representing an address, whether physical or virtual.
-pub trait Address {
+pub trait Address: ops::Add + Sized {
     /// The primitive numeric type used to represent this address.
     type Repr: Align;
 
     /// Align this address down to the provided alignment.
-    fn align_down(&self, align: Self::Repr) -> Self;
+    fn align_down(&self, align: usize) -> Self;
 
     /// Align this address up to the provided alignment.
-    fn align_up(&self, align: Self::Repr) -> Self;
+    fn align_up(&self, align: usize) -> Self;
 
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned<P: Page>(&self) -> bool;
@@ -77,6 +78,42 @@ pub trait MemCtrl {
 }
 
 /// A virtual memory address.
-#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Address)]
-#[address_repr(usize)]
+#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Number)]
 pub struct VAddr(pub usize);
+
+impl fmt::Debug for VAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VAddr({:#08x})", self.0)
+    }
+}
+
+impl Address for VAddr {
+    type Repr = usize;
+
+    /// Align this address down to the provided alignment.
+    fn align_down(&self, align: usize) -> Self {
+        VAddr(self.0.align_down(align))
+    }
+
+    /// Align this address up to the provided alignment.
+    fn align_up(&self, align: usize) -> Self {
+        VAddr(self.0.align_up(align))
+    }
+
+    /// Returns true if this address is aligned on a page boundary.
+    fn is_page_aligned<P: Page>(&self) -> bool {
+        self.0 % P::SIZE as usize == 0 as usize
+    }
+}
+
+impl Into<usize> for VAddr {
+    fn into(self) -> usize {
+        self.0
+    }
+}
+
+impl From<usize> for VAddr {
+    fn from(r: usize) -> VAddr {
+        VAddr(r)
+    }
+}
