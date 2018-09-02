@@ -79,6 +79,7 @@ pub trait MemCtrl {
 
 /// A virtual memory address.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Number)]
+#[repr(transparent)]
 pub struct VAddr(pub usize);
 
 impl fmt::Debug for VAddr {
