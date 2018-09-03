@@ -1,6 +1,12 @@
-use super::{PageSize, Virtual};
-use core::{marker::PhantomData, ops};
-use hal9000::mem::{Page, VAddr};
+use hal9000::{
+    mem::{Address, VAddr, Page},
+    Architecture,
+};
+use super::{Virtual, PageSize};
+use core::{
+    ops,
+    marker::PhantomData
+};
 
 pub const NUM_ENTRIES: usize = 512;
 
@@ -23,6 +29,35 @@ pub trait Sublevel: Level {
 /// `Index`/`IndexMut` impls require less repeated code.
 pub trait IndexedBy<I> {
     fn index_of(idx: I) -> usize;
+}
+
+pub trait Entry {
+    type PAddr: Address;
+    type Frame: Page<Address = Self::PAddr>;
+    type Error;
+    type Flags;
+
+    /// Returns true if this is an unused entry
+    fn is_unused(&self) -> bool;
+
+    /// Sets this entry to be unused
+    fn set_unused(&mut self) -> &mut Self;
+
+
+    /// Access the entry's bitflags.
+    fn flags(&self) -> Self::Flags;
+
+    /// Returns the physical address pointed to by this page table entry
+    fn pointed_addr(&self) -> Self::PAddr;
+
+    /// Returns the frame in memory pointed to by this page table entry.
+    fn pointed_frame(&self) -> Result<Self::Frame, Self::Error>;
+
+    fn set_addr(&mut self, addr: Self::PAddr, flags: Self::Flags) -> Result<(), Self::Error>;
+
+    fn set_frame(&mut self, frame: Self::Frame, flags: Self::Flags) -> Result<(), Self::Error>;
+
+    fn set_flags(&mut self, flags: Self::Flags);
 }
 
 /// A page table.

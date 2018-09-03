@@ -17,6 +17,8 @@ extern crate hal9000_derive;
 pub mod cpu;
 pub mod mem;
 pub mod params;
+
+pub mod prelude;
 pub mod util;
 
 pub trait Architecture {

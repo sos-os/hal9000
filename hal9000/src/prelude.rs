@@ -15,7 +15,7 @@ pub use ::mem::{
 
 };
 pub use ::params::{
-    Architecture as __hal9000_params_Architecture,
     BootParams as __hal9000_params_BootParams,
 };
 pub use ::util::Align as __hal9000_util_Align;
+pub use Architecture as __hal9000_Architecture;

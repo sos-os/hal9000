@@ -3,7 +3,7 @@ name = "hal9000-x86"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@elizas.website>"]
 
-
 [dependencies]
+bitflags = "1.0.4"
 hal9000 = { path = "../hal9000" }
 hal9000-derive = { path = "../hal9000-derive" }
