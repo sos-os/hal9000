@@ -176,3 +176,5 @@ tasks.json
 ## ignore whole .idea
 .idea/*
 alarm.iml
+
+.rustc_info.json
