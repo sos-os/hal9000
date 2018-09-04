@@ -66,8 +66,7 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 write!(f, "{}({:#08x})", stringify!(#name), self.0)
             }
         }
-    }
-    .into();
+    };
     // this is broken up into several `quote!`s so we don't hit
     // the recursion limit...
     tokens.append_all(&[
@@ -238,7 +237,7 @@ where
             }
         },
     ]);
-    tokens.into()
+    tokens
 }
 
 fn impl_unary_op<A, B, C, D>(
@@ -273,5 +272,5 @@ where
             }
         },
     ]);
-    tokens.into()
+    tokens
 }
