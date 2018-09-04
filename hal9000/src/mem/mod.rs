@@ -28,12 +28,17 @@ pub trait Address: ops::Add + Sized {
 
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned<P: Page>(&self) -> bool;
+
+    /// Convert this address into a const pointer to a value of type `T`.
+    fn as_ptr<T>(&self) -> *const T;
+
+    /// Convert this address into a raw pointer to a value of type `T`.
+    fn as_mut_ptr<T>(&self) -> *mut T;
 }
 
 /// A physical address.
 pub trait PhysicalAddress: Address {
-    /// Convert this physical address into a raw pointer to a T.
-    fn as_mut_ptr<T>(&self) -> *mut T;
+
 }
 
 pub trait MemCtrl {
@@ -104,6 +109,16 @@ impl Address for VAddr {
     /// Returns true if this address is aligned on a page boundary.
     fn is_page_aligned<P: Page>(&self) -> bool {
         self.0 % P::SIZE as usize == 0 as usize
+    }
+
+    #[inline(always)]
+    fn as_ptr<T>(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    #[inline(always)]
+    fn as_mut_ptr<T>(&self) -> *mut T {
+        self.0 as *mut T
     }
 }
 

@@ -91,6 +91,16 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 fn is_page_aligned<P: Page>(&self) -> bool {
                     self.0 % P::SIZE as #repr == 0 as #repr
                 }
+
+                #[inline(always)]
+                fn as_ptr<T>(&self) -> *const T {
+                    self.0 as *const T
+                }
+
+                #[inline(always)]
+                fn as_mut_ptr<T>(&self) -> *mut T {
+                    self.0 as *mut T
+                }
             }
         },
         quote! {
