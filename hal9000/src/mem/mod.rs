@@ -37,9 +37,7 @@ pub trait Address: ops::Add + Sized {
 }
 
 /// A physical address.
-pub trait PhysicalAddress: Address {
-
-}
+pub trait PhysicalAddress: Address {}
 
 pub trait MemCtrl {
     type Arch: Architecture;

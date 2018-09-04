@@ -1,5 +1,3 @@
-use hal9000::mem::{self, Address};
-
 use {
     paging::{Page, PageSize, Small},
     x64::{PAddr, VAddr},

@@ -2,7 +2,6 @@
 #![feature(custom_attribute)]
 #![feature(step_trait)]
 #![feature(asm)]
-
 #![feature(associated_type_defaults)]
 
 #[macro_use]
