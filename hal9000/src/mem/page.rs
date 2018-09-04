@@ -77,6 +77,13 @@ pub trait TableUpdate {
     unsafe fn commit(self) -> Self::Item;
 }
 
+#[derive(Debug)]
+pub enum MapError<A: FrameAllocator, B> {
+    AlreadyMapped,
+    Alloc(A::Error),
+    Other(B),
+}
+
 pub trait Mapper {
     type Arch: Architecture;
     type PAddr = <Self::Arch as Architecture>::PAddr;
@@ -117,7 +124,7 @@ pub trait Mapper {
         frame: Self::Physical,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
         A: FrameAllocator<Frame = Self::Physical>;
 
@@ -132,7 +139,7 @@ pub trait Mapper {
         frame: Self::Physical,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
         A: FrameAllocator<Frame = Self::Physical>;
 
@@ -150,7 +157,7 @@ pub trait Mapper {
         page: Self::Virtual,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
         A: FrameAllocator<Frame = Self::Physical>;
 
@@ -184,5 +191,11 @@ impl TableUpdate for () {
     type Item = ();
     unsafe fn commit(self) -> Self::Item {
         // do nothing.
+    }
+}
+
+impl<A: FrameAllocator, B> From<B> for MapError<A, B> {
+    fn from(error: B) -> Self {
+        MapError::Other(error)
     }
 }

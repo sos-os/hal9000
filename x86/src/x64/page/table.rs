@@ -1,17 +1,12 @@
-use hal9000::{
-    prelude::*,
-    mem::page,
-    Architecture,
-};
-use ::{
-    x64::{
-        X86_64,
-        PAddr,
-        page::*,
-    },
-    paging::{table::Entry, FlushTlb},
-};
 use core::fmt;
+use hal9000::{mem::page, prelude::*};
+use {
+    paging::{
+        table::{Entry, EntryOpts},
+        FlushTlb,
+    },
+    x64::{page::*, PAddr, X86_64},
+};
 
 /// Struct representing the currently active PML4 instance.
 ///
@@ -27,12 +22,7 @@ pub struct ActivePml4 {
 #[repr(transparent)]
 pub struct Entry64(u64);
 
-pub enum Error {
-    Alloc,
-    // TODO: Implement
-}
-
-const ADDR_MASK: u64 = 0x000fffff_fffff000;
+const ADDR_MASK: u64 = 0x000f_ffff_ffff_f000;
 
 bitflags! {
     #[derive(Default)]
@@ -86,7 +76,7 @@ impl page::Mapper for ActivePml4 {
     /// This must be committed for the update to have an effect.
     type Update = FlushTlb<size::Small>;
     /// Any errors that can occur when mapping a page.
-    type Error = Error;
+    type Error = EntryError;
 
     /// Translates a virtual address to the corresponding physical address.
     ///
@@ -116,7 +106,7 @@ impl page::Mapper for ActivePml4 {
         frame: Self::Physical,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
     {
@@ -134,7 +124,7 @@ impl page::Mapper for ActivePml4 {
         frame: Self::Physical,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
     {
@@ -155,7 +145,7 @@ impl page::Mapper for ActivePml4 {
         page: Self::Virtual,
         flags: Self::Flags,
         alloc: &mut A,
-    ) -> Result<Self::Update, Self::Error>
+    ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
     {
@@ -186,38 +176,31 @@ impl page::Mapper for ActivePml4 {
     }
 }
 
+// ===== impl Entry64 =====
+
 impl Entry64 {
     fn is_huge(&self) -> bool {
         self.flags().contains(EntryFlags::HUGE_PAGE)
     }
-
-    fn is_present(&self) -> bool {
-        self.flags().contains(EntryFlags::PRESENT)
-    }
 }
 
-impl Entry for Entry64
-// where
-//     u64: From<PAddr>,
-{
+impl Entry for Entry64 {
     type PAddr = PAddr;
     type Frame = Physical;
     type Error = EntryError;
     type Flags = EntryFlags;
 
-    /// Returns true if this is an unused entry
-    fn is_unused(&self) -> bool {
-        unimplemented!()
-    }
-
-    /// Sets this entry to be unused
-    fn set_unused(&mut self) -> &mut Self {
-        unimplemented!()
-    }
-
     /// Access the entry's bitflags.
     fn flags(&self) -> Self::Flags {
         EntryFlags::from_bits_truncate(self.0)
+    }
+
+    fn validate_as_table(&self) -> Result<(), Self::Error> {
+        if self.is_huge() {
+            Err(EntryError::Huge)
+        } else {
+            Ok(())
+        }
     }
 
     /// Returns the physical address pointed to by this page table entry
@@ -228,13 +211,21 @@ impl Entry for Entry64
     /// Returns the frame in memory pointed to by this page table entry.
     fn pointed_frame(&self) -> Result<Physical, Self::Error> {
         match self.flags() {
-            flags if !flags.contains(EntryFlags::PRESENT) => Err(EntryError::NotPresent),
-            flags if flags.contains(EntryFlags::HUGE_PAGE) => Err(EntryError::Huge),
+            flags if !flags.contains(EntryFlags::PRESENT) => {
+                Err(EntryError::NotPresent)
+            },
+            flags if flags.contains(EntryFlags::HUGE_PAGE) => {
+                Err(EntryError::Huge)
+            },
             _ => Ok(Physical::from_addr_down(self.pointed_addr())),
         }
     }
 
-    fn set_addr(&mut self, addr: PAddr, flags: Self::Flags) -> Result<(), Self::Error> {
+    fn set_addr(
+        &mut self,
+        addr: PAddr,
+        flags: Self::Flags,
+    ) -> Result<(), Self::Error> {
         if !addr.is_page_aligned::<Physical>() {
             return Err(EntryError::NotAligned);
         };
@@ -243,11 +234,15 @@ impl Entry for Entry64
         Ok(())
     }
 
-    fn set_frame(&mut self, frame: Physical, flags: Self::Flags) -> Result<(), Self::Error> {
+    fn set_frame(
+        &mut self,
+        frame: Physical,
+        flags: Self::Flags,
+    ) -> Result<(), Self::Error> {
         if self.is_huge() {
             return Err(EntryError::Huge);
         }
-        self.set_addr(frame.base_address(),  flags)
+        self.set_addr(frame.base_address(), flags)
     }
 
     fn set_flags(&mut self, flags: Self::Flags) {
@@ -263,5 +258,46 @@ impl fmt::Debug for Entry64 {
             .field("addr", &self.pointed_addr())
             .field("flags", &self.flags())
             .finish()
+    }
+}
+
+impl EntryOpts for EntryFlags {
+    fn is_present(&self) -> bool {
+        !self.contains(EntryFlags::PRESENT)
+    }
+
+    fn is_writable(&self) -> bool {
+        self.contains(EntryFlags::WRITABLE)
+    }
+
+    fn can_execute(&self) -> bool {
+        !self.contains(EntryFlags::NO_EXECUTE)
+    }
+
+    fn set_present(mut self, unused: bool) -> Self {
+        if unused {
+            self.remove(EntryFlags::PRESENT)
+        } else {
+            self.insert(EntryFlags::PRESENT)
+        };
+        self
+    }
+
+    fn set_writable(mut self, writable: bool) -> Self {
+        if writable {
+            self.insert(EntryFlags::WRITABLE)
+        } else {
+            self.remove(EntryFlags::WRITABLE)
+        };
+        self
+    }
+
+    fn set_executable(mut self, executable: bool) -> Self {
+        if executable {
+            self.remove(EntryFlags::NO_EXECUTE)
+        } else {
+            self.insert(EntryFlags::NO_EXECUTE)
+        };
+        self
     }
 }
