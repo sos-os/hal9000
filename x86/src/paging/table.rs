@@ -220,3 +220,28 @@ impl<T: Level> IndexedBy<usize> for T {
         *idx
     }
 }
+
+pub mod level {
+    use super::{Level, Sublevel};
+
+    /// Marker for page directory (level 2) page tables.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub enum Pd {}
+
+    /// Marker for page table (level 1) page tables.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub enum Pt {}
+
+    impl Level for Pd {
+        const ADDR_SHIFT: usize = 21;
+    }
+
+    impl Sublevel for Pd {
+        type Next = Pt;
+    }
+
+    impl Level for Pt {
+        const ADDR_SHIFT: usize = 12;
+    }
+
+}

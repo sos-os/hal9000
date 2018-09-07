@@ -1,20 +1,16 @@
-use core::fmt;
+use core::{fmt, ptr};
 use hal9000::{mem::page, prelude::*};
 use {
     paging::{
-        table::{Entry, EntryOpts},
+        table::{self, Entry, EntryOpts},
         FlushTlb,
     },
     x64::{page::*, PAddr, X86_64},
 };
 
 /// Struct representing the currently active PML4 instance.
-///
-/// The `ActivePML4` is a `Unique` reference to a PML4-level page table. It's
-/// unique because, well, there can only be one active PML4 at a given time.
-pub struct ActivePml4 {
-    // TODO: implement
-//plm4: Unique<Table<Pml4Level>>
+pub struct CurrentPageTable<'a> {
+    pml4: &'a mut Table<level::Pml4>,
 }
 
 /// A 64-bit page table entry.
@@ -22,7 +18,11 @@ pub struct ActivePml4 {
 #[repr(transparent)]
 pub struct Entry64(u64);
 
+pub type Table<L> = table::Table<Entry64, L>;
+
 const ADDR_MASK: u64 = 0x000f_ffff_ffff_f000;
+
+const PML4_PTR: *mut Table<level::Pml4> = 0xffff_ffff_ffff_f000 as *mut _;
 
 bitflags! {
     #[derive(Default)]
@@ -64,7 +64,15 @@ pub enum EntryError {
     Huge,
 }
 
-impl page::Mapper for ActivePml4 {
+impl CurrentPageTable<'static> {
+    pub unsafe fn new() -> Self {
+        Self {
+            pml4: &mut *PML4_PTR,
+        }
+    }
+}
+
+impl<'a> page::Mapper for CurrentPageTable<'a> {
     type Arch = X86_64;
 
     type Virtual = Virtual;
@@ -173,6 +181,25 @@ impl page::Mapper for ActivePml4 {
         flags: Self::Flags,
     ) -> Result<Self::Update, Self::Error> {
         unimplemented!()
+    }
+}
+
+impl Table<level::Pml4> {
+    #[inline]
+    pub fn page_table_for(&self, page: &Virtual) -> Option<&Table<level::Pt>> {
+        self.next_table(page)
+            .and_then(|pdpt| pdpt.next_table(page))
+            .and_then(|pd| pd.next_table(page))
+    }
+
+    #[inline]
+    pub fn page_table_mut_for(
+        &mut self,
+        page: &Virtual,
+    ) -> Option<&mut Table<level::Pt>> {
+        self.next_table_mut(page)
+            .and_then(|pdpt| pdpt.next_table_mut(page))
+            .and_then(|pd| pd.next_table_mut(page))
     }
 }
 
@@ -299,5 +326,34 @@ impl EntryOpts for EntryFlags {
             self.insert(EntryFlags::NO_EXECUTE)
         };
         self
+    }
+}
+
+pub mod level {
+    pub use paging::table::level::*;
+    use paging::table::{Level, Sublevel};
+
+    /// Marker for page directory meta-level 4 (level 4) page tables.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub enum Pml4 {}
+
+    /// Marker for page directory pointer table (level 3) page tables.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub enum Pdpt {}
+
+    impl Level for Pml4 {
+        const ADDR_SHIFT: usize = 39;
+    }
+
+    impl Sublevel for Pml4 {
+        type Next = Pdpt;
+    }
+
+    impl Level for Pdpt {
+        const ADDR_SHIFT: usize = 30;
+    }
+
+    impl Sublevel for Pdpt {
+        type Next = Pd;
     }
 }
