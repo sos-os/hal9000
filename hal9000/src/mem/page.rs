@@ -84,12 +84,14 @@ pub enum MapError<A: FrameAllocator, B> {
     Other(B),
 }
 
-pub trait Mapper {
+pub trait Map<P, F>
+where
+    P: Page<Address = VAddr>,
+    F: Page<Address = Self::PAddr>,
+    Self::PAddr: Address,
+{
     type Arch: Architecture;
     type PAddr = <Self::Arch as Architecture>::PAddr;
-
-    type Physical: Page = <Self::Arch as Architecture>::Frame;
-    type Virtual: Page<Address = VAddr>;
 
     /// Architecture-dependent flags that configure a virtual page.
     type Flags;
@@ -109,7 +111,7 @@ pub trait Mapper {
     fn translate(&self, vaddr: VAddr) -> Option<Self::PAddr>;
 
     /// Translates a virtual page to a physical frame.
-    fn translate_page(&self, page: Self::Virtual) -> Option<Self::Physical>;
+    fn translate_page(&self, page: P) -> Option<F>;
 
     /// Modifies the page tables so that `page` maps to `frame`.
     ///
@@ -120,13 +122,13 @@ pub trait Mapper {
     /// + `alloc`: a memory allocator
     fn map<A>(
         &mut self,
-        page: Self::Virtual,
-        frame: Self::Physical,
+        page: P,
+        frame: F,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
-        A: FrameAllocator<Frame = Self::Physical>;
+        A: FrameAllocator<Frame = F>;
 
     /// Identity maps a given `frame`.
     ///
@@ -136,12 +138,12 @@ pub trait Mapper {
     /// + `alloc`: a memory allocator
     fn identity_map<A>(
         &mut self,
-        frame: Self::Physical,
+        frame: F,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
-        A: FrameAllocator<Frame = Self::Physical>;
+        A: FrameAllocator<Frame = F>;
 
     /// Maps the given `VirtualPage` to any free frame.
     ///
@@ -154,28 +156,28 @@ pub trait Mapper {
     /// + `alloc`: a memory allocator
     fn map_to_any<A>(
         &mut self,
-        page: Self::Virtual,
+        page: P,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, MapError<A, Self::Error>>
     where
-        A: FrameAllocator<Frame = Self::Physical>;
+        A: FrameAllocator<Frame = F>;
 
     /// Unmaps the given `VirtualPage`.
     ///
     /// All freed frames are returned to the given `FrameAllocator`.
     fn unmap<A>(
         &mut self,
-        page: Self::Virtual,
+        page: P,
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: FrameAllocator<Frame = Self::Physical>;
+        A: FrameAllocator<Frame = F>;
 
     /// Updates the flags on the given `page`.
     fn set_flags(
         &mut self,
-        page: Self::Virtual,
+        page: P,
         flags: Self::Flags,
     ) -> Result<Self::Update, Self::Error>;
 }
