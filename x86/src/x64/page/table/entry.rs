@@ -6,6 +6,32 @@ use {
 };
 
 /// A 64-bit page table entry.
+///
+/// Page table entries are laid out as follows:
+///
+/// ```notrust
+/// 63    62 ...   52 ...                            12 ...   9 ...    0
+/// +----+---------+---------------------------------+--------+-------+
+/// | NX | unused | address of frame/next page table | unused | flags |
+/// +----+--------+----------------------------------+--------+-------+
+///      10 bits  40 bits                            2 bits   8 bits
+/// ```
+///
+/// + The 63rd bit is the NO_EXECUTE flag. If this is set (and the NXE bit in
+///   the EFER register is also set), data on this page may not be executed as
+///   code.
+/// + Bits 62 through 52 and 11 through 9 are unused by the CPU. The OS may use
+///   these 12 bits for system-specific flags, or leave them unset.
+/// + Bits 51 through 12 are the (4KiB) page-aligned 52-bit physical address of
+///   either the frame or the next page table, depending on whether the entry
+///   maps directly to a frame or to a lower-level page table. Note that this
+///   section of the entry is only 40 bits; this is because these addresses are
+///   _page-aligned. Since the 12 least significant bits of an address would
+///   correspond to relative offsets within a 4KiB page, they are assumed to be
+///   0 when translating a page table entry to a frame.
+/// + Bits 9 through 0 are flags that configure the page table entry. See the
+///   [Flags] type for details on these flags.
+///
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct Entry64(u64);
