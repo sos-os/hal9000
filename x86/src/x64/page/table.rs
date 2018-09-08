@@ -1,4 +1,4 @@
-use core::{fmt, ptr};
+use core::fmt;
 use hal9000::{mem::page, prelude::*};
 use {
     paging::{
@@ -72,17 +72,17 @@ impl CurrentPageTable<'static> {
     }
 }
 
-impl<'a> page::Mapper for CurrentPageTable<'a> {
+impl<'a> page::Map<Virtual<size::Size4Kb>, Physical<size::Size4Kb>>
+    for CurrentPageTable<'a>
+{
     type Arch = X86_64;
-
-    type Virtual = Virtual;
-
+    type PAddr = PAddr;
     /// Architecture-dependent flags that configure a virtual page.
     type Flags = EntryFlags;
     /// The type returned by a page table update.
     ///
     /// This must be committed for the update to have an effect.
-    type Update = FlushTlb<size::Small>;
+    type Update = FlushTlb<size::Size4Kb>;
     /// Any errors that can occur when mapping a page.
     type Error = EntryError;
 
@@ -97,8 +97,15 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     }
 
     /// Translates a virtual page to a physical frame.
-    fn translate_page(&self, page: Self::Virtual) -> Option<Self::Physical> {
-        unimplemented!()
+    fn translate_page(
+        &self,
+        page: Virtual<size::Size4Kb>,
+    ) -> Option<Physical<size::Size4Kb>> {
+        // Get the level 1 page table for the virtual page.
+        let page_table = self.pml4.page_table_for(&page)?;
+        // Return the frame pointed to by the entry in the level 1 table.
+        page_table[&page].pointed_frame().ok()
+        // TODO(eliza): figure out how to handle huge pages...
     }
 
     /// Modifies the page tables so that `page` maps to `frame`.
@@ -110,15 +117,32 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     /// + `alloc`: a memory allocator
     fn map<A>(
         &mut self,
-        page: Self::Virtual,
-        frame: Self::Physical,
+        page: Virtual<size::Size4Kb>,
+        frame: Physical<size::Size4Kb>,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>,
+        A: page::FrameAllocator<Frame = Physical<size::Size4Kb>>,
     {
-        unimplemented!()
+        let page_table = self
+            .pml4
+            .create_next(&page, alloc)
+            .and_then(|pdpt| pdpt.create_next(&page, alloc))
+            .and_then(|pd| pd.create_next(&page, alloc))?;
+
+        let entry = &mut page_table[&page];
+        let flags = entry.flags();
+
+        if flags.is_present() {
+            return Err(page::MapError::AlreadyMapped);
+        }
+
+        entry
+            .set_frame(frame, flags.set_present(true))
+            .map_err(page::MapError::Other)?;
+
+        Ok(FlushTlb::new(page))
     }
 
     /// Identity maps a given `frame`.
@@ -129,12 +153,12 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     /// + `alloc`: a memory allocator
     fn identity_map<A>(
         &mut self,
-        frame: Self::Physical,
+        frame: Physical<size::Size4Kb>,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>,
+        A: page::FrameAllocator<Frame = Physical<size::Size4Kb>>,
     {
         unimplemented!()
     }
@@ -150,12 +174,12 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     /// + `alloc`: a memory allocator
     fn map_to_any<A>(
         &mut self,
-        page: Self::Virtual,
+        page: Virtual<size::Size4Kb>,
         flags: Self::Flags,
         alloc: &mut A,
     ) -> Result<Self::Update, page::MapError<A, Self::Error>>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>,
+        A: page::FrameAllocator<Frame = Physical<size::Size4Kb>>,
     {
         unimplemented!()
     }
@@ -165,11 +189,11 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     /// All freed frames are returned to the given `page::FrameAllocator`.
     fn unmap<A>(
         &mut self,
-        page: Self::Virtual,
+        page: Virtual<size::Size4Kb>,
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>,
+        A: page::FrameAllocator<Frame = Physical<size::Size4Kb>>,
     {
         unimplemented!()
     }
@@ -177,7 +201,7 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
     /// Updates the flags on the given `page`.
     fn set_flags(
         &mut self,
-        page: Self::Virtual,
+        page: Virtual<size::Size4Kb>,
         flags: Self::Flags,
     ) -> Result<Self::Update, Self::Error> {
         unimplemented!()
@@ -185,21 +209,33 @@ impl<'a> page::Mapper for CurrentPageTable<'a> {
 }
 
 impl Table<level::Pml4> {
+    /// Returns a reference to the page table for the given index.
     #[inline]
-    pub fn page_table_for(&self, page: &Virtual) -> Option<&Table<level::Pt>> {
-        self.next_table(page)
-            .and_then(|pdpt| pdpt.next_table(page))
-            .and_then(|pd| pd.next_table(page))
+    pub fn page_table_for<I>(&self, idx: &I) -> Option<&Table<level::Pt>>
+    where
+        level::Pml4: table::IndexedBy<I>,
+        level::Pdpt: table::IndexedBy<I>,
+        level::Pd: table::IndexedBy<I>,
+    {
+        self.next_table(idx)
+            .and_then(|pdpt| pdpt.next_table(idx))
+            .and_then(|pd| pd.next_table(idx))
     }
 
+    /// Returns a mutable reference to the page table for the given index.
     #[inline]
-    pub fn page_table_mut_for(
+    pub fn page_table_mut_for<I>(
         &mut self,
-        page: &Virtual,
-    ) -> Option<&mut Table<level::Pt>> {
-        self.next_table_mut(page)
-            .and_then(|pdpt| pdpt.next_table_mut(page))
-            .and_then(|pd| pd.next_table_mut(page))
+        idx: &I,
+    ) -> Option<&mut Table<level::Pt>>
+    where
+        level::Pml4: table::IndexedBy<I>,
+        level::Pdpt: table::IndexedBy<I>,
+        level::Pd: table::IndexedBy<I>,
+    {
+        self.next_table_mut(idx)
+            .and_then(|pdpt| pdpt.next_table_mut(idx))
+            .and_then(|pd| pd.next_table_mut(idx))
     }
 }
 
@@ -330,8 +366,8 @@ impl EntryOpts for EntryFlags {
 }
 
 pub mod level {
-    pub use paging::table::level::*;
-    use paging::table::{Level, Sublevel};
+    use super::super::size;
+    pub use paging::table::{level::*, HoldsSize, Level, Sublevel};
 
     /// Marker for page directory meta-level 4 (level 4) page tables.
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -349,6 +385,10 @@ pub mod level {
         type Next = Pdpt;
     }
 
+    impl HoldsSize<size::Size4Kb> for Pml4 {}
+    impl HoldsSize<size::Size2Mb> for Pml4 {}
+    impl HoldsSize<size::Size1Gb> for Pml4 {}
+
     impl Level for Pdpt {
         const ADDR_SHIFT: usize = 30;
     }
@@ -356,4 +396,9 @@ pub mod level {
     impl Sublevel for Pdpt {
         type Next = Pd;
     }
+
+    impl HoldsSize<size::Size4Kb> for Pdpt {}
+    impl HoldsSize<size::Size2Mb> for Pdpt {}
+    impl HoldsSize<size::Size1Gb> for Pdpt {}
+
 }

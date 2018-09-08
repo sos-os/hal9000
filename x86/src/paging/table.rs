@@ -17,6 +17,8 @@ pub trait Sublevel: Level {
     type Next: Level;
 }
 
+pub trait HoldsSize<S: PageSize>: Level {}
+
 /// Trait implemented by `Level` for types which can index a page.
 ///
 /// Consumers need not implement this --- it's used here to make `Table`'s
@@ -206,7 +208,11 @@ impl<T: Level> IndexedBy<VAddr> for T {
     }
 }
 
-impl<T: Level, S: PageSize> IndexedBy<Virtual<S>> for T {
+impl<T, S> IndexedBy<Virtual<S>> for T
+where
+    T: Level + HoldsSize<S>,
+    S: PageSize,
+{
     #[inline]
     fn index_of(page: &Virtual<S>) -> usize {
         Self::index_of(&page.base_address())
@@ -222,7 +228,8 @@ impl<T: Level> IndexedBy<usize> for T {
 }
 
 pub mod level {
-    use super::{Level, Sublevel};
+    use super::{HoldsSize, Level, Sublevel};
+    use paging::{PageSize, Size2Mb, Size4Kb};
 
     /// Marker for page directory (level 2) page tables.
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -240,8 +247,13 @@ pub mod level {
         type Next = Pt;
     }
 
+    impl HoldsSize<Size4Kb> for Pd {}
+    impl HoldsSize<Size2Mb> for Pd {}
+
     impl Level for Pt {
         const ADDR_SHIFT: usize = 12;
     }
+
+    impl HoldsSize<Size4Kb> for Pt {}
 
 }
