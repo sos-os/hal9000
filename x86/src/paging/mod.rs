@@ -8,10 +8,16 @@ pub trait PageSize: Copy + Eq + PartialOrd + Ord {
     const SIZE: usize;
 }
 
-pub type Virtual<S = Small> = Page<VAddr, S>;
+pub type Virtual<S = Size4Kb> = Page<VAddr, S>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Small;
+pub enum Size4Kb {}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Size2Mb {}
+
+pub const KILOBYTE: usize = 1024;
+pub const MEGABYTE: usize = KILOBYTE * 1024;
 
 #[derive(Debug)]
 pub struct Page<A, S: PageSize> {
@@ -21,7 +27,13 @@ pub struct Page<A, S: PageSize> {
 
 #[must_use = "the TLB must be flushed to commit page table updates"]
 pub struct FlushTlb<S: PageSize> {
-    pub(crate) page: Virtual<S>,
+    page: Virtual<S>,
+}
+
+impl<S: PageSize> FlushTlb<S> {
+    pub fn new(page: Virtual<S>) -> Self {
+        Self { page }
+    }
 }
 
 impl<S: PageSize> TableUpdate for FlushTlb<S> {
@@ -88,6 +100,10 @@ where
     }
 }
 
-impl PageSize for Small {
-    const SIZE: usize = 4096;
+impl PageSize for Size4Kb {
+    const SIZE: usize = KILOBYTE * 4;
+}
+
+impl PageSize for Size2Mb {
+    const SIZE: usize = MEGABYTE * 2;
 }

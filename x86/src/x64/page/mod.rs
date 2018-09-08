@@ -1,27 +1,22 @@
 use {
-    paging::{Page, PageSize, Small},
+    paging::Page,
     x64::{PAddr, VAddr},
 };
 
 pub mod table;
 
-pub type Physical<S = Small> = Page<PAddr, S>;
+pub type Physical<S = size::Size4Kb> = Page<PAddr, S>;
 pub use paging::Virtual;
 
 pub mod size {
-    use super::PageSize;
-    pub use paging::Small;
+    use paging::MEGABYTE;
+    pub use paging::{PageSize, Size2Mb, Size4Kb};
 
+    /// 1 gigabyte "huge" pages.
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct Large;
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct Huge;
+    pub struct Size1Gb;
 
-    impl PageSize for Large {
-        const SIZE: usize = Small::SIZE * 512;
-    }
-
-    impl PageSize for Huge {
-        const SIZE: usize = Large::SIZE * 512;
+    impl PageSize for Size1Gb {
+        const SIZE: usize = MEGABYTE * 1024;
     }
 }
