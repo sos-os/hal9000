@@ -18,7 +18,7 @@ pub mod page;
 /// Trait representing an address, whether physical or virtual.
 pub trait Address: ops::Add + Sized {
     /// The primitive numeric type used to represent this address.
-    type Repr: Align;
+    type Repr: Align + Into<Self>;
 
     /// Align this address down to the provided alignment.
     fn align_down(&self, align: usize) -> Self;
