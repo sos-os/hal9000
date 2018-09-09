@@ -27,3 +27,10 @@ impl Architecture for X86_64 {
 
     const BITS: &'static str = "64";
 }
+
+impl From<u64> for PAddr {
+    fn from(addr: u64) -> Self {
+        const MASK: u64 = 0x000F_FFFF_FFFF_FFFFu64;
+        PAddr(addr & MASK)
+    }
+}
