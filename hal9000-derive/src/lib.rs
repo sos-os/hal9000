@@ -77,13 +77,13 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 /// Align this address down to the provided alignment.
                 fn align_down(&self, align: usize) -> Self {
                     use ::hal9000::util::Align;
-                    #name ( self.0.align_down(align as #repr) )
+                    #name::from( self.0.align_down(align as #repr) )
                 }
 
                 /// Align this address up to the provided alignment.
                 fn align_up(&self, align: usize) -> Self {
                     use ::hal9000::util::Align;
-                    #name ( self.0.align_up(align as #repr) )
+                    #name::from( self.0.align_up(align as #repr) )
                 }
 
                 /// Returns true if this address is aligned on a page boundary.
@@ -108,17 +108,9 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.0
                 }
             }
-        },
-        quote! {
-            impl ::core::convert::From<#repr> for #name {
-                fn from(r: #repr) -> #name {
-                    #name(r)
-                }
-            }
-
             impl ::core::convert::From<usize> for #name {
                 fn from(r: usize) -> #name {
-                    #name(r as #repr)
+                    #name::from(r as #repr)
                 }
             }
         },
