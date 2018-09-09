@@ -39,7 +39,9 @@ pub struct Entry64(u64);
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    /// The entry was not present.
     NotPresent,
+    /// The entry's address was not aligned on a page boundary.
     NotAligned,
     Huge,
 }

@@ -157,7 +157,7 @@ where
         let flags = self[i].flags().set_present(true).set_writable(true);
         self[i].set_frame(frame, flags)?;
 
-        let mut table = self
+        let table = self
             .next_table_mut(i)
             .expect("next page table was just created, so it should exist");
         // Zero out the new table before returning it.
@@ -229,7 +229,7 @@ impl<T: Level> IndexedBy<usize> for T {
 
 pub mod level {
     use super::{HoldsSize, Level, Sublevel};
-    use paging::{PageSize, Size2Mb, Size4Kb};
+    use paging::{Size2Mb, Size4Kb};
 
     /// Marker for page directory (level 2) page tables.
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]

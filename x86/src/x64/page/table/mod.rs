@@ -1,5 +1,4 @@
-use core::fmt;
-use hal9000::{mem::page, prelude::*};
+use hal9000::mem::page;
 use {
     paging::{
         table::{self, Entry, EntryOpts},
