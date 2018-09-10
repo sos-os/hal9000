@@ -1,10 +1,11 @@
 use hal9000::mem::page;
 use {
     paging::{
+        Physical, Virtual,
         table::{self, Entry, EntryOpts},
         FlushTlb,
     },
-    x64::{page::*, PAddr, X86_64},
+    x64::{page::*, PAddr, VAddr, X86_64},
 };
 
 pub mod entry;
@@ -37,6 +38,7 @@ impl<'a> page::Map<Virtual<size::Size4Kb>, Physical<size::Size4Kb>>
 {
     type Arch = X86_64;
     type PAddr = PAddr;
+    type VAddr = VAddr;
     /// Architecture-dependent flags that configure a virtual page.
     type Flags = entry::Flags;
     /// The type returned by a page table update.

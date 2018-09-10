@@ -1,12 +1,4 @@
-use {
-    paging::Page,
-    x64::{PAddr, VAddr},
-};
-
 pub mod table;
-
-pub type Physical<S = size::Size4Kb> = Page<PAddr, S>;
-pub use paging::Virtual;
 
 pub mod size {
     use paging::MEGABYTE;

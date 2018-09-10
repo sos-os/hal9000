@@ -1,14 +1,15 @@
-use hal9000::mem::{self, page::TableUpdate, Address, VAddr};
+use hal9000::mem::{self, page::TableUpdate, Address};
 
 use core::{marker::PhantomData, ops};
-
+use ::{PAddr, VAddr};
 pub mod table;
+
+pub type Physical<S = Size4Kb> = Page<PAddr, S>;
+pub type Virtual<S = Size4Kb> = Page<VAddr, S>;
 
 pub trait PageSize: Copy + Eq + PartialOrd + Ord {
     const SIZE: usize;
 }
-
-pub type Virtual<S = Size4Kb> = Page<VAddr, S>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Size4Kb {}

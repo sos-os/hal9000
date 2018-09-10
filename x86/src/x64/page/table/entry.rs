@@ -1,7 +1,10 @@
 use core::fmt;
 use hal9000::mem::{Address, Page};
 use {
-    paging::table::{Entry, EntryOpts},
+    paging::{
+        Physical,
+        table::{Entry, EntryOpts},
+    },
     x64::{page::*, PAddr},
 };
 

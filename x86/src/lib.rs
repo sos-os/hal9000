@@ -12,3 +12,6 @@ extern crate hal9000_derive;
 
 pub mod paging;
 pub mod x64;
+
+#[cfg(target_arch="x86_64")]
+pub use self::x64::{VAddr, PAddr};
