@@ -9,7 +9,7 @@
 //! # Architecture-independent memory abstractions.
 pub use self::page::Page;
 
-use core::{fmt, ops};
+use core::ops;
 use {params::BootParams, util::Align, Architecture};
 
 pub mod map;
@@ -78,63 +78,4 @@ pub trait MemCtrl {
         P: BootParams<Arch = Self::Arch>,
         A: page::FrameAllocator<Frame = Self::Frame>,
         Self::Frame: Page;
-}
-
-/// A virtual memory address.
-#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Number)]
-#[repr(transparent)]
-pub struct VAddr(pub usize);
-
-impl fmt::Debug for VAddr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VAddr({:#08x})", self.0)
-    }
-}
-
-impl Address for VAddr {
-    type Repr = usize;
-
-    /// Align this address down to the provided alignment.
-    fn align_down(&self, align: usize) -> Self {
-        VAddr(self.0.align_down(align))
-    }
-
-    /// Align this address up to the provided alignment.
-    fn align_up(&self, align: usize) -> Self {
-        VAddr(self.0.align_up(align))
-    }
-
-    /// Returns true if this address is aligned on a page boundary.
-    fn is_page_aligned<P: Page>(&self) -> bool {
-        self.0 % P::SIZE as usize == 0 as usize
-    }
-
-    #[inline(always)]
-    fn as_ptr<T>(&self) -> *const T {
-        self.0 as *const T
-    }
-
-    #[inline(always)]
-    fn as_mut_ptr<T>(&self) -> *mut T {
-        self.0 as *mut T
-    }
-}
-
-impl Into<usize> for VAddr {
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl From<usize> for VAddr {
-    fn from(r: usize) -> VAddr {
-        VAddr(r)
-    }
-}
-
-impl VAddr {
-    #[inline(always)]
-    pub fn as_usize(&self) -> usize {
-        self.0
-    }
 }

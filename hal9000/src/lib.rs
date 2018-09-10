@@ -11,9 +11,6 @@
 #![feature(associated_type_defaults)]
 #![no_std]
 
-#[macro_use]
-extern crate hal9000_derive;
-
 pub mod cpu;
 pub mod mem;
 pub mod params;
@@ -24,6 +21,13 @@ pub mod util;
 pub trait Architecture {
     /// This architecture's physical address type.
     type PAddr: mem::Address;
+
+    /// This architecture's virtual address type.
+    ///
+    /// TODO(eliza): consider requiring this be an `Address<Repr=usize>`?
+    /// Do we plan to support any architectures that don't have word-sized
+    /// virtual addresses?
+    type VAddr: mem::Address;
 
     /// This architecture's physical page type.
     type Frame: mem::Page;

@@ -1,5 +1,5 @@
 use {
-    mem::{Address, VAddr},
+    mem::Address,
     Architecture,
 };
 
@@ -86,12 +86,13 @@ pub enum MapError<A: FrameAllocator, B> {
 
 pub trait Map<P, F>
 where
-    P: Page<Address = VAddr>,
+    P: Page<Address = Self::VAddr>,
     F: Page<Address = Self::PAddr>,
     Self::PAddr: Address,
 {
     type Arch: Architecture;
-    type PAddr = <Self::Arch as Architecture>::PAddr;
+    type PAddr: Address = <Self::Arch as Architecture>::PAddr;
+    type VAddr: Address = <Self::Arch as Architecture>::VAddr;
 
     /// Architecture-dependent flags that configure a virtual page.
     type Flags;
@@ -108,7 +109,7 @@ where
     /// + `Some(PAddr)` containing the physical address corresponding to
     ///                 `vaddr`, if it is mapped.
     /// + `None`: if the address is not mapped.
-    fn translate(&self, vaddr: VAddr) -> Option<Self::PAddr>;
+    fn translate(&self, vaddr: Self::VAddr) -> Option<Self::PAddr>;
 
     /// Translates a virtual page to a physical frame.
     fn translate_page(&self, page: P) -> Option<F>;
