@@ -63,7 +63,13 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
         impl ::core::fmt::Debug for #name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter)
                 -> ::core::fmt::Result {
-                write!(f, "{}({:#08x})", stringify!(#name), self.0)
+                write!(f, "{}({:p})", stringify!(#name), self)
+            }
+        }
+        impl ::core::fmt::Pointer for #name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter)
+                -> ::core::fmt::Result {
+                write!(f, "{:p}", self.as_ptr())
             }
         }
     };
