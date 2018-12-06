@@ -1,2 +1,8 @@
 language: rust
 rust: nightly
+
+jobs:
+  include:
+  - script: cargo fmt --all -- --check
+    install: rustup component add rustfmt-preview
+    name: "rustfmt"
