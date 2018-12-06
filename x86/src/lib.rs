@@ -7,5 +7,5 @@ extern crate hal9000;
 #[macro_use]
 extern crate hal9000_derive;
 
-pub mod x64;
 pub mod paging;
+pub mod x64;

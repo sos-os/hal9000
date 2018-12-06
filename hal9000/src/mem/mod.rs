@@ -63,8 +63,8 @@ pub trait MemCtrl {
     ///
     /// # Safety
     ///
-    /// - Until this function has returned `Ok`, using heap-allocated types
-    ///   will result in undefined behaviour.
+    /// - Until this function has returned `Ok`, using heap-allocated types will
+    ///   result in undefined behaviour.
     /// - Calling this function with incorrect parameters may result in
     ///   undefined behaviour.
     unsafe fn init_heap<P, A>(

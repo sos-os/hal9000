@@ -1,14 +1,14 @@
 use hal9000::mem::{self, Address};
 
-use ::{
-    paging::{Page, Small, PageSize},
+use {
+    paging::{Page, PageSize, Small},
     x64::{PAddr, VAddr},
 };
 
 pub mod table;
 
 pub type Physical<S = Small> = Page<PAddr, S>;
-pub use ::paging::Virtual;
+pub use paging::Virtual;
 
 pub mod size {
     use super::PageSize;

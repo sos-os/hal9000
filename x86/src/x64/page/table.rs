@@ -1,22 +1,16 @@
-use hal9000::mem::{
-    page,
-};
-use ::{
-    x64::{
-        X86_64,
-        page::*,
-    },
+use hal9000::mem::page;
+use {
     paging::FlushTlb,
+    x64::{page::*, X86_64},
 };
 
 /// Struct representing the currently active PML4 instance.
 ///
 /// The `ActivePML4` is a `Unique` reference to a PML4-level page table. It's
 /// unique because, well, there can only be one active PML4 at a given time.
-///
 pub struct ActivePml4 {
     // TODO: implement
-    //plm4: Unique<Table<Pml4Level>>
+//plm4: Unique<Table<Pml4Level>>
 }
 
 pub struct PageFlags {
@@ -72,7 +66,7 @@ impl page::Mapper for ActivePml4 {
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>
+        A: page::FrameAllocator<Frame = Self::Physical>,
     {
         unimplemented!()
     }
@@ -90,7 +84,7 @@ impl page::Mapper for ActivePml4 {
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>
+        A: page::FrameAllocator<Frame = Self::Physical>,
     {
         unimplemented!()
     }
@@ -111,7 +105,7 @@ impl page::Mapper for ActivePml4 {
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>
+        A: page::FrameAllocator<Frame = Self::Physical>,
     {
         unimplemented!()
     }
@@ -125,7 +119,7 @@ impl page::Mapper for ActivePml4 {
         alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
-        A: page::FrameAllocator<Frame = Self::Physical>
+        A: page::FrameAllocator<Frame = Self::Physical>,
     {
         unimplemented!()
     }

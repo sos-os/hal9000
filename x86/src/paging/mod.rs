@@ -1,9 +1,4 @@
-use hal9000::mem::{
-    self,
-    Address,
-    VAddr,
-    page::TableUpdate,
-};
+use hal9000::mem::{self, page::TableUpdate, Address, VAddr};
 
 use core::{marker::PhantomData, ops};
 
@@ -32,7 +27,7 @@ pub struct FlushTlb<S: PageSize> {
 impl<S: PageSize> TableUpdate for FlushTlb<S> {
     type Item = ();
     unsafe fn commit(self) -> Self::Item {
-         asm!( "invlpg [$0]"
+        asm!( "invlpg [$0]"
              :
              : "r" (self.page)
              : "memory"
