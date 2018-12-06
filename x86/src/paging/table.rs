@@ -1,15 +1,11 @@
-use hal9000::mem::{VAddr, Page};
-use super::{Virtual, PageSize};
-use core::{
-    ops,
-    marker::PhantomData
-};
+use super::{PageSize, Virtual};
+use core::{marker::PhantomData, ops};
+use hal9000::mem::{Page, VAddr};
 
 pub const NUM_ENTRIES: usize = 512;
 
 /// Marker indicating a page table level.
 pub trait Level {
-
     /// How much to shift an address by to find its index in this table.
     const ADDR_SHIFT: usize;
 
@@ -35,7 +31,6 @@ pub struct Table<E, L: Level> {
     entries: [E; NUM_ENTRIES],
     _level: PhantomData<L>,
 }
-
 
 // ===== impl Table =====
 
