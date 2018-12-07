@@ -92,15 +92,11 @@ impl<'a> page::Map<Virtual<size::Size4Kb>, Physical<size::Size4Kb>>
             .and_then(|pd| pd.create_next(&page, alloc))?;
 
         let entry = &mut page_table[&page];
-        let flags = entry.flags();
-
-        if flags.is_present() {
+        if entry.flags().is_present() {
             return Err(page::MapError::AlreadyMapped);
         }
 
-        entry
-            .set_frame(frame, flags.set_present(true))
-            .map_err(page::MapError::Other)?;
+        entry.set_frame(frame, flags.set_present(true))?;
 
         Ok(FlushTlb::new(page))
     }
