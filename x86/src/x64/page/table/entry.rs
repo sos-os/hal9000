@@ -2,8 +2,8 @@ use core::fmt;
 use hal9000::mem::{Address, Page};
 use {
     paging::{
-        Physical,
         table::{Entry, EntryOpts},
+        Physical,
     },
     x64::{page::*, PAddr},
 };
@@ -34,11 +34,9 @@ use {
 ///   0 when translating a page table entry to a frame.
 /// + Bits 9 through 0 are flags that configure the page table entry. See the
 ///   [Flags] type for details on these flags.
-///
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct Entry64(u64);
-
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -82,7 +80,6 @@ bitflags! {
     }
 }
 
-
 // ===== impl Entry64 =====
 
 impl Entry64 {
@@ -118,12 +115,8 @@ impl Entry for Entry64 {
     /// Returns the frame in memory pointed to by this page table entry.
     fn pointed_frame(&self) -> Result<Physical, Self::Error> {
         match self.flags() {
-            flags if !flags.contains(Flags::PRESENT) => {
-                Err(Error::NotPresent)
-            },
-            flags if flags.contains(Flags::HUGE_PAGE) => {
-                Err(Error::Huge)
-            },
+            flags if !flags.contains(Flags::PRESENT) => Err(Error::NotPresent),
+            flags if flags.contains(Flags::HUGE_PAGE) => Err(Error::Huge),
             _ => Ok(Physical::from_addr_down(self.pointed_addr())),
         }
     }

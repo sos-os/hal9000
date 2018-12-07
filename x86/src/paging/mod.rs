@@ -1,7 +1,7 @@
 use hal9000::mem::{self, page::TableUpdate, Address};
 
 use core::{marker::PhantomData, ops};
-use ::{PAddr, VAddr};
+use {PAddr, VAddr};
 pub mod table;
 
 pub type Physical<S = Size4Kb> = Page<PAddr, S>;

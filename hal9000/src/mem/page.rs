@@ -1,7 +1,4 @@
-use {
-    mem::Address,
-    Architecture,
-};
+use {mem::Address, Architecture};
 
 /// A physical or virtual page.
 pub trait Page {

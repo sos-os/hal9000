@@ -1,9 +1,9 @@
-use ::{
-    x64::VAddr,
-    paging::{PageSize, Virtual},
-};
 use core::{marker::PhantomData, ops};
 use hal9000::mem::{page, Address, Page};
+use {
+    paging::{PageSize, Virtual},
+    x64::VAddr,
+};
 
 pub const NUM_ENTRIES: usize = 512;
 

@@ -6,7 +6,7 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro2::{Ident, Span};
-use quote::{TokenStreamExt};
+use quote::TokenStreamExt;
 
 #[proc_macro_derive(Address, attributes(address_repr))]
 pub fn address(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -158,9 +158,10 @@ fn impl_address(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     ]);
 
     // Only generate `From<usize>` impl when the repr is not usize.
-    let usize_ty = syn::NestedMeta::from(
-        syn::Meta::from(Ident::new("usize", Span::call_site()))
-    );
+    let usize_ty = syn::NestedMeta::from(syn::Meta::from(Ident::new(
+        "usize",
+        Span::call_site(),
+    )));
     if repr != &usize_ty {
         tokens.extend(quote! {
             impl ::core::convert::From<usize> for #name {

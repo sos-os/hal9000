@@ -1,9 +1,8 @@
 use hal9000::mem::page;
 use {
     paging::{
-        Physical, Virtual,
         table::{self, Entry, EntryOpts},
-        FlushTlb,
+        FlushTlb, Physical, Virtual,
     },
     x64::{page::*, PAddr, VAddr, X86_64},
 };
@@ -23,7 +22,6 @@ pub type Table<L> = table::Table<Entry64, L>;
 const ADDR_MASK: u64 = 0x000f_ffff_ffff_f000;
 
 const PML4_PTR: *mut Table<level::Pml4> = 0xffff_ffff_ffff_f000 as *mut _;
-
 
 impl CurrentPageTable<'static> {
     pub unsafe fn new() -> Self {
