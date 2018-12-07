@@ -10,6 +10,15 @@ extern crate hal9000;
 #[macro_use]
 extern crate hal9000_derive;
 
+#[cfg(test)]
+#[macro_use]
+extern crate proptest;
+#[cfg(test)]
+extern crate bit_field;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
 pub mod paging;
 pub mod x64;
 
