@@ -1,10 +1,11 @@
 use hal9000::mem::page;
 use {
     paging::{
-        table::{self, Entry, EntryOpts},
+        table,
         FlushTlb, Physical, Virtual,
     },
     x64::{page::*, PAddr, VAddr, X86_64},
+    self::entry::{Handle, Opts},
 };
 
 pub mod entry;

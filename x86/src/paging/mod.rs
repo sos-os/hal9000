@@ -2,13 +2,16 @@ use hal9000::mem::{self, page::TableUpdate, Address};
 
 use core::{marker::PhantomData, ops};
 use {PAddr, VAddr};
+
 pub mod table;
+pub mod entry;
 
 pub type Physical<S = Size4Kb> = Page<PAddr, S>;
 pub type Virtual<S = Size4Kb> = Page<VAddr, S>;
 
 pub trait PageSize: Copy + Eq + PartialOrd + Ord {
     const SIZE: usize;
+    type Level: table::Level;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -103,8 +106,10 @@ where
 
 impl PageSize for Size4Kb {
     const SIZE: usize = KILOBYTE * 4;
+    type Level = table::level::Pt;
 }
 
 impl PageSize for Size2Mb {
     const SIZE: usize = MEGABYTE * 2;
+    type Level = table::level::Pd;
 }

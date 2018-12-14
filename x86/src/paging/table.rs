@@ -1,11 +1,14 @@
 use core::{marker::PhantomData, ops};
 use hal9000::mem::{page, Address, Page};
 use {
-    paging::{PageSize, Virtual},
+    paging::{PageSize, Virtual, Physical, Size2Mb, Size4Kb, entry::{self, Opts}},
     x64::VAddr,
 };
 
 pub const NUM_ENTRIES: usize = 512;
+
+pub use super::entry::Handle as Entry;
+pub use super::entry::HandleMut as EntryMut;
 
 /// Marker indicating a page table level.
 pub trait Level {
@@ -30,56 +33,24 @@ pub trait IndexedBy<I> {
     fn index_of(idx: &I) -> usize;
 }
 
-pub trait Entry {
-    type PAddr: Address;
-    type Frame: Page<Address = Self::PAddr>;
-    type Error;
-    type Flags: EntryOpts;
+pub trait GetEntry<Size: PageSize, R: entry::Repr> {
+    type Level: HoldsSize<Size>;
 
-    /// Access the entry's bitflags.
-    fn flags(&self) -> Self::Flags;
+    fn entry<I>(&self, &I) -> Option<Entry<Size, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size as PageSize>::Level: IndexedBy<I>;
 
-    /// Returns the physical address pointed to by this page table entry
-    fn pointed_addr(&self) -> Self::PAddr;
+    fn entry_mut<I>(&mut self, &I) -> Option<EntryMut<Size, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size as PageSize>::Level: IndexedBy<I>;
 
-    /// Returns the frame in memory pointed to by this page table entry.
-    fn pointed_frame(&self) -> Result<Self::Frame, Self::Error>;
-
-    fn validate_as_table(&self) -> Result<(), Self::Error>;
-
-    fn set_addr(
-        &mut self,
-        addr: Self::PAddr,
-        flags: Self::Flags,
-    ) -> Result<(), Self::Error>;
-
-    fn set_frame(
-        &mut self,
-        frame: Self::Frame,
-        flags: Self::Flags,
-    ) -> Result<(), Self::Error>;
-
-    fn set_flags(&mut self, flags: Self::Flags);
-}
-
-pub trait EntryOpts {
-    /// Returns true if this entry is mapped to a frame, or false if it is
-    /// unused.
-    fn is_present(&self) -> bool;
-
-    /// Returns true if this entry is writable.
-    fn is_writable(&self) -> bool;
-
-    /// Returns true if the page is executable.
-    fn can_execute(&self) -> bool;
-
-    /// Sets whether or not the entry is present.
-    fn set_present(self, unused: bool) -> Self;
-
-    /// Sets whether the entry is writable.
-    fn set_writable(self, writable: bool) -> Self;
-
-    fn set_executable(self, writable: bool) -> Self;
+    fn get_or_create_entry<I, A>(&mut self, &I, alloc: &mut A) -> Result<EntryMut<Size, R>, page::MapError<A, entry::Error>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size as PageSize>::Level: IndexedBy<I>,
+        A: page::FrameAllocator<Frame = Physical<Size4Kb>>;
 }
 
 /// A page table.
@@ -93,7 +64,7 @@ pub struct Table<E, L: Level> {
 
 impl<E, L> Table<E, L>
 where
-    E: Entry,
+    E: entry::Repr,
     L: Sublevel,
 {
     /// Returns the address of the next table, or None if none exists.
@@ -135,10 +106,10 @@ where
         &mut self,
         i: &I,
         alloc: &mut A,
-    ) -> Result<&mut Table<E, L::Next>, page::MapError<A, E::Error>>
+    ) -> Result<&mut Table<E, L::Next>, page::MapError<A, entry::Error>>
     where
         L: IndexedBy<I>,
-        A: page::FrameAllocator<Frame = <E as Entry>::Frame>,
+        A: page::FrameAllocator<Frame = Physical<Size4Kb>>,
     {
         // First, ensure that the entry at the given index is valid to point to
         // a page table (on 32-bit systems, this is a no-op, on x86_64, it
@@ -157,8 +128,11 @@ where
 
         // Set the new page to be present and writable, and then update the
         // entry to point at that page with those flags set.
-        let flags = self[i].flags().set_present(true).set_writable(true);
-        self[i].set_frame(frame, flags)?;
+        {
+            let mut entry = self[i];
+            let flags = entry.flags().set_present(true).set_writable(true);
+            entry.set_addr(frame.base_address(), flags)?;
+        }
 
         let table = self
             .next_table_mut(i)
@@ -170,30 +144,30 @@ where
     }
 }
 
-impl<'a, Entry, L, I> ops::Index<&'a I> for Table<Entry, L>
+impl<'a, E, L, I> ops::Index<&'a I> for Table<E, L>
 where
     L: Level + IndexedBy<I>,
 {
-    type Output = Entry;
+    type Output = E;
     #[inline]
-    fn index(&self, i: &'a I) -> &Entry {
+    fn index(&self, i: &'a I) -> &E {
         &self.entries[L::index_of(i)]
     }
 }
 
-impl<'a, Entry, L, I> ops::IndexMut<&'a I> for Table<Entry, L>
+impl<'a, E, L, I> ops::IndexMut<&'a I> for Table<E, L>
 where
     L: Level + IndexedBy<I>,
 {
     #[inline]
-    fn index_mut(&mut self, i: &'a I) -> &mut Entry {
+    fn index_mut(&mut self, i: &'a I) -> &mut E {
         &mut self.entries[L::index_of(i)]
     }
 }
 
 impl<E, L> Table<E, L>
 where
-    E: Entry,
+    E: entry::Repr,
     L: Level,
 {
     pub fn zero(&mut self) {
@@ -203,6 +177,107 @@ where
         }
     }
 }
+
+// ===== impl Table<_, level::Pd> =====
+
+impl<R> GetEntry<Size2Mb, R> for Table<R, level::Pd>
+where
+    R: entry::Repr,
+{
+    type Level = level::Pd;
+
+    fn entry<I>(&self, i: &I) -> Option<Entry<Size2Mb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size2Mb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.entries.get(level::Pd::index_of(i)).map(Entry::new)
+    }
+
+    fn entry_mut<I>(&mut self, i: &I) -> Option<EntryMut<Size2Mb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size2Mb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.entries.get_mut(level::Pd::index_of(i)).map(EntryMut::new)
+    }
+
+    fn get_or_create_entry<I, A>(&mut self, i: &I, alloc: &mut A) -> Result<EntryMut<Size2Mb, R>, page::MapError<A, entry::Error>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size2Mb as PageSize>::Level: IndexedBy<I>,
+        A: page::FrameAllocator<Frame = Physical<Size4Kb>>,
+    {
+        Ok(self.entry_mut(i).ok_or(entry::Error::NotPresent)?)
+    }
+}
+
+impl<R> GetEntry<Size4Kb, R> for Table<R, level::Pd>
+where
+    R: entry::Repr,
+{
+    type Level = level::Pd;
+
+    fn entry<I>(&self, i: &I) -> Option<Entry<Size4Kb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.next_table(i).and_then(|next| next.entry(i))
+    }
+
+    fn entry_mut<I>(&mut self, i: &I) -> Option<EntryMut<Size4Kb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.next_table_mut(i).and_then(|next| next.entry_mut(i))
+    }
+
+    fn get_or_create_entry<I, A>(&mut self, i: &I, alloc: &mut A) -> Result<EntryMut<Size4Kb, R>, page::MapError<A, entry::Error>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+        A: page::FrameAllocator<Frame = Physical<Size4Kb>>,
+    {
+        self.create_next(i, alloc)?.get_or_create_entry(i, alloc)
+    }
+}
+
+// ===== impl Table<_, level::Pt> =====
+
+impl<R> GetEntry<Size4Kb, R> for Table<R, level::Pt>
+where
+    R: entry::Repr,
+{
+    type Level = level::Pt;
+
+    fn entry<I>(&self, i: &I) -> Option<Entry<Size4Kb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.entries.get(level::Pt::index_of(i)).map(Entry::new)
+    }
+
+    fn entry_mut<I>(&mut self, i: &I) -> Option<EntryMut<Size4Kb, R>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+    {
+        self.entries.get_mut(level::Pt::index_of(i)).map(EntryMut::new)
+    }
+
+    fn get_or_create_entry<I, A>(&mut self, i: &I, alloc: &mut A) -> Result<EntryMut<Size4Kb, R>, page::MapError<A, entry::Error>>
+    where
+        Self::Level: IndexedBy<I>,
+        <Size4Kb as PageSize>::Level: IndexedBy<I>,
+        A: page::FrameAllocator<Frame = Physical<Size4Kb>>,
+    {
+        Ok(self.entry_mut(i).ok_or(entry::Error::NotPresent)?)
+    }
+}
+
 // ===== impl Level =====
 
 impl<T: Level> IndexedBy<VAddr> for T {

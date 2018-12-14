@@ -2,6 +2,8 @@ pub mod table;
 
 pub mod size {
     use paging::MEGABYTE;
+    use super::table;
+
     pub use paging::{PageSize, Size2Mb, Size4Kb};
 
     /// 1 gigabyte "huge" pages.
@@ -10,5 +12,6 @@ pub mod size {
 
     impl PageSize for Size1Gb {
         const SIZE: usize = MEGABYTE * 1024;
+        type Level = table::level::Pdpt;
     }
 }

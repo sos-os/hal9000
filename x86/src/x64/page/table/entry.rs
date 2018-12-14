@@ -2,11 +2,12 @@ use core::fmt;
 use hal9000::mem::{Address, Page};
 use {
     paging::{
-        table::{Entry, EntryOpts},
         Physical,
     },
     x64::{page::*, PAddr},
 };
+
+pub use paging::entry::*;
 
 /// A 64-bit page table entry.
 ///
@@ -38,14 +39,14 @@ use {
 #[repr(transparent)]
 pub struct Entry64(u64);
 
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// The entry was not present.
-    NotPresent,
-    /// The entry's address was not aligned on a page boundary.
-    NotAligned,
-    Huge,
-}
+// #[derive(Debug, PartialEq)]
+// pub enum Error {
+//     /// The entry was not present.
+//     NotPresent,
+//     /// The entry's address was not aligned on a page boundary.
+//     NotAligned,
+//     Huge,
+// }
 
 bitflags! {
     #[derive(Default)]
@@ -88,10 +89,7 @@ impl Entry64 {
     }
 }
 
-impl Entry for Entry64 {
-    type PAddr = PAddr;
-    type Frame = Physical;
-    type Error = Error;
+impl Repr for Entry64 {
     type Flags = Flags;
 
     /// Access the entry's bitflags.
@@ -99,7 +97,7 @@ impl Entry for Entry64 {
         Flags::from_bits_truncate(self.0)
     }
 
-    fn validate_as_table(&self) -> Result<(), Self::Error> {
+    fn validate_as_table(&self) -> Result<(), Error> {
         if self.is_huge() {
             Err(Error::Huge)
         } else {
@@ -112,20 +110,20 @@ impl Entry for Entry64 {
         PAddr::from(self.0 & table::ADDR_MASK)
     }
 
-    /// Returns the frame in memory pointed to by this page table entry.
-    fn pointed_frame(&self) -> Result<Physical, Self::Error> {
-        match self.flags() {
-            flags if !flags.contains(Flags::PRESENT) => Err(Error::NotPresent),
-            flags if flags.contains(Flags::HUGE_PAGE) => Err(Error::Huge),
-            _ => Ok(Physical::from_addr_down(self.pointed_addr())),
-        }
-    }
+    // /// Returns the frame in memory pointed to by this page table entry.
+    // fn pointed_frame(&self) -> Result<Physical, Self::Error> {
+    //     match self.flags() {
+    //         flags if !flags.contains(Flags::PRESENT) => Err(Error::NotPresent),
+    //         flags if flags.contains(Flags::HUGE_PAGE) => Err(Error::Huge),
+    //         _ => Ok(Physical::from_addr_down(self.pointed_addr())),
+    //     }
+    // }
 
     fn set_addr(
         &mut self,
         addr: PAddr,
         flags: Self::Flags,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Error> {
         if !addr.is_page_aligned::<Physical>() {
             return Err(Error::NotAligned);
         };
@@ -134,16 +132,16 @@ impl Entry for Entry64 {
         Ok(())
     }
 
-    fn set_frame(
-        &mut self,
-        frame: Physical,
-        flags: Self::Flags,
-    ) -> Result<(), Self::Error> {
-        if self.is_huge() {
-            return Err(Error::Huge);
-        }
-        self.set_addr(frame.base_address(), flags)
-    }
+    // fn set_frame(
+    //     &mut self,
+    //     frame: Physical,
+    //     flags: Self::Flags,
+    // ) -> Result<(), Self::Error> {
+    //     if self.is_huge() {
+    //         return Err(Error::Huge);
+    //     }
+    //     self.set_addr(frame.base_address(), flags)
+    // }
 
     fn set_flags(&mut self, flags: Self::Flags) {
         let addr: u64 = self.pointed_addr().into();
@@ -161,7 +159,7 @@ impl fmt::Debug for Entry64 {
     }
 }
 
-impl EntryOpts for Flags {
+impl Opts for Flags {
     fn is_present(&self) -> bool {
         !self.contains(Flags::PRESENT)
     }
