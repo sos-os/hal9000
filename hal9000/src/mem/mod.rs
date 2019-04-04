@@ -9,8 +9,8 @@
 //! # Architecture-independent memory abstractions.
 pub use self::page::Page;
 
-use core::{fmt, ops};
 use crate::{params::BootParams, util::Align, Architecture};
+use core::{fmt, ops};
 
 pub mod map;
 pub mod page;

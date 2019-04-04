@@ -1,5 +1,5 @@
-use core::ops::Range;
 use crate::{mem, Architecture};
+use core::ops::Range;
 
 pub trait BootParams {
     /// This architecture's physical address type.

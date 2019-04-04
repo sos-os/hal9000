@@ -1,8 +1,8 @@
-use hal9000::mem::page;
 use crate::{
     paging::FlushTlb,
     x64::{page::*, X86_64},
 };
+use hal9000::mem::page;
 
 /// Struct representing the currently active PML4 instance.
 ///
