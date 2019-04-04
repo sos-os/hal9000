@@ -1,6 +1,6 @@
-use hal9000::mem::{self, Address};
 
-use {
+
+use crate::{
     paging::{Page, PageSize, Small},
     x64::{PAddr, VAddr},
 };
@@ -8,11 +8,11 @@ use {
 pub mod table;
 
 pub type Physical<S = Small> = Page<PAddr, S>;
-pub use paging::Virtual;
+pub use crate::paging::Virtual;
 
 pub mod size {
     use super::PageSize;
-    pub use paging::Small;
+    pub use crate::paging::Small;
 
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct Large;

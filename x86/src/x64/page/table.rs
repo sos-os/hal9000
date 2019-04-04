@@ -1,5 +1,5 @@
 use hal9000::mem::page;
-use {
+use crate::{
     paging::FlushTlb,
     x64::{page::*, X86_64},
 };
@@ -42,12 +42,12 @@ impl page::Mapper for ActivePml4 {
     /// + `Some(PAddr)` containing the physical address corresponding to
     ///                 `vaddr`, if it is mapped.
     /// + `None`: if the address is not mapped.
-    fn translate(&self, vaddr: VAddr) -> Option<Self::PAddr> {
+    fn translate(&self, _vaddr: VAddr) -> Option<Self::PAddr> {
         unimplemented!()
     }
 
     /// Translates a virtual page to a physical frame.
-    fn translate_page(&self, page: Self::Virtual) -> Option<Self::Physical> {
+    fn translate_page(&self, _page: Self::Virtual) -> Option<Self::Physical> {
         unimplemented!()
     }
 
@@ -60,10 +60,10 @@ impl page::Mapper for ActivePml4 {
     /// + `alloc`: a memory allocator
     fn map<A>(
         &mut self,
-        page: Self::Virtual,
-        frame: Self::Physical,
-        flags: Self::Flags,
-        alloc: &mut A,
+        _page: Self::Virtual,
+        _frame: Self::Physical,
+        _flags: Self::Flags,
+        _alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
@@ -79,9 +79,9 @@ impl page::Mapper for ActivePml4 {
     /// + `alloc`: a memory allocator
     fn identity_map<A>(
         &mut self,
-        frame: Self::Physical,
-        flags: Self::Flags,
-        alloc: &mut A,
+        _frame: Self::Physical,
+        _flags: Self::Flags,
+        _alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
@@ -100,9 +100,9 @@ impl page::Mapper for ActivePml4 {
     /// + `alloc`: a memory allocator
     fn map_to_any<A>(
         &mut self,
-        page: Self::Virtual,
-        flags: Self::Flags,
-        alloc: &mut A,
+        _page: Self::Virtual,
+        _flags: Self::Flags,
+        _alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
@@ -115,8 +115,8 @@ impl page::Mapper for ActivePml4 {
     /// All freed frames are returned to the given `page::FrameAllocator`.
     fn unmap<A>(
         &mut self,
-        page: Self::Virtual,
-        alloc: &mut A,
+        _page: Self::Virtual,
+        _alloc: &mut A,
     ) -> Result<Self::Update, Self::Error>
     where
         A: page::FrameAllocator<Frame = Self::Physical>,
@@ -127,8 +127,8 @@ impl page::Mapper for ActivePml4 {
     /// Updates the flags on the given `page`.
     fn set_flags(
         &mut self,
-        page: Self::Virtual,
-        flags: Self::Flags,
+        _page: Self::Virtual,
+        _flags: Self::Flags,
     ) -> Result<Self::Update, Self::Error> {
         unimplemented!()
     }
