@@ -10,7 +10,7 @@
 pub use self::page::Page;
 
 use core::{fmt, ops};
-use {params::BootParams, util::Align, Architecture};
+use crate::{params::BootParams, util::Align, Architecture};
 
 pub mod map;
 pub mod page;

@@ -2,6 +2,7 @@
 name = "hal9000-derive"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@elizas.website>"]
+edition = "2018"
 
 [lib]
 proc-macro = true

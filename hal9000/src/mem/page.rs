@@ -1,4 +1,4 @@
-use {
+use crate::{
     mem::{Address, VAddr},
     Architecture,
 };

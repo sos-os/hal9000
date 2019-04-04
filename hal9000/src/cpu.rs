@@ -1,5 +1,5 @@
-use params::BootParams;
-use Architecture;
+use crate::params::BootParams;
+use crate::Architecture;
 
 pub trait Cpu: Sized {
     type Arch: Architecture;
